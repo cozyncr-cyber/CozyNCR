@@ -4,6 +4,7 @@ import { ID } from "node-appwrite";
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Query } from "node-appwrite";
 
 export async function signupWithAppwrite(formData: any) {
   const { name, email, password, phone, dob, location } = formData;
@@ -118,7 +119,6 @@ export async function signinWithAppwrite(formData) {
   }
 }
 
-// 2. Forgot Password Action
 export async function sendPasswordRecovery(email) {
   try {
     const { account } = await createAdminClient();
@@ -134,5 +134,40 @@ export async function sendPasswordRecovery(email) {
   } catch (error) {
     console.error("Recovery Error:", error);
     return { error: error.message || "Failed to send recovery email" };
+  }
+}
+
+export async function getUserProfile() {
+  try {
+    const { account, databases } = await createSessionClient();
+
+    // get the Auth User (to verify session and get ID)
+    const authUser = await account.get();
+
+    // get the User Profile Document from Database
+    const userDoc = await databases.getDocument(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID,
+      authUser.$id
+    );
+
+    // (Optional) Get Property Count
+    // If you have a properties collection, you can count them here.
+    // For now, we will return 0 or fetch it if you have the collection ID ready.
+    // const properties = await databases.listDocuments(
+    //    process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+    //    process.env.NEXT_PUBLIC_APPWRITE_PROPERTIES_COLLECTION_ID, // You need this env var
+    //    [Query.equal("userId", authUser.$id)]
+    // );
+
+    // Merge and Return
+    return {
+      ...authUser, // Contains $id, email, phoneVerification, etc.
+      ...userDoc, // Contains location, dob, role, etc.
+      // propertyCount: properties.total // Uncomment if using step 3
+    };
+  } catch (error) {
+    // If anything fails (no session, doc not found), return null
+    return null;
   }
 }

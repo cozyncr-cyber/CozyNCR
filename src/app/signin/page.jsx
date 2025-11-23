@@ -1,6 +1,7 @@
 "use client";
 import SigninForm from "@/components/SigninForm";
 import Image from "next/image";
+// import { getUserProfile } from "@/actions/auth";
 
 const page = () => {
   return (
