@@ -10,10 +10,15 @@ import {
   CheckCircle,
   Loader2,
   ArrowRight,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signupWithAppwrite } from "@/actions/auth";
 
 const SignupForm = () => {
+  const router = useRouter();
+
   // Form State
   const [formData, setFormData] = useState({
     name: "",
@@ -50,6 +55,25 @@ const SignupForm = () => {
     }
   };
 
+  // --- Helper: Age Validation (18+) ---
+  const isAtLeast18 = (dobString) => {
+    if (!dobString) return false;
+    const today = new Date();
+    const birthDate = new Date(dobString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 18;
+  };
+
+  // --- Helper: Strong Password Regex ---
+  const isStrongPassword = (password) => {
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    return regex.test(password);
+  };
+
   // Simulate Sending OTP
   const handleSendOtp = async () => {
     if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
@@ -80,16 +104,30 @@ const SignupForm = () => {
     setIsVerifyingOtp(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
 
-    // Basic Validation
+    // 1. Basic Validation
     if (!formData.name) newErrors.name = "Full name is required";
     if (!formData.phone) newErrors.phone = "Phone number is required";
-    if (!formData.dob) newErrors.dob = "Date of birth is required";
     if (!formData.location) newErrors.location = "Location is required";
-    if (!formData.password) newErrors.password = "Password is required";
+
+    // 2. Age Validation
+    if (!formData.dob) {
+      newErrors.dob = "Date of birth is required";
+    } else if (!isAtLeast18(formData.dob)) {
+      newErrors.dob = "You must be at least 18 years old to sign up.";
+    }
+
+    // 3. Password Validation
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (!isStrongPassword(formData.password)) {
+      newErrors.password =
+        "Password must have 8+ chars, 1 upper, 1 lower, 1 number, & 1 symbol";
+    }
+
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
@@ -103,9 +141,24 @@ const SignupForm = () => {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      // Submit Logic Here
-      console.log("Form Submitted Successfully", formData);
-      alert("Account created successfully!");
+      setIsLoading(true);
+
+      // Call Server Action
+      const result = await signupWithAppwrite(formData);
+
+      setIsLoading(false);
+
+      if (result.success) {
+        alert("Account created successfully!");
+        // Force refresh ensures the server can read the new cookie
+        router.refresh();
+        router.push("/");
+      } else {
+        setErrors((prev) => ({
+          ...prev,
+          backend: result.error,
+        }));
+      }
     }
   };
 
@@ -118,6 +171,14 @@ const SignupForm = () => {
           Just a few quick things to get started
         </p>
       </div>
+
+      {/* Backend Error Alert */}
+      {errors.backend && (
+        <div className="mx-8 p-3 mb-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
+          <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-600 font-medium">{errors.backend}</p>
+        </div>
+      )}
 
       {/* Form Section */}
       <form onSubmit={handleSubmit} className="px-8 pb-8 space-y-5">

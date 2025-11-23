@@ -1,68 +1,138 @@
 "use server";
 
-import { createAdminClient } from "@/lib/appwrite";
+import { ID } from "node-appwrite";
+import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ID, Permission, Role } from "node-appwrite";
 
-export async function signIn(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+export async function signupWithAppwrite(formData: any) {
+  const { name, email, password, phone, dob, location } = formData;
 
-  // 1. Use Admin client to create a session for the user
-  const { account } = await createAdminClient();
-  const session = await account.createEmailPasswordSession(email, password);
+  try {
+    const { account, databases } = await createAdminClient();
 
-  // 2. Set the cookie so the browser remembers the user
-  cookies().set("appwrite-session", session.secret, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "strict",
-    secure: true,
-  });
+    // 1. Create the Auth Account
+    const userId = ID.unique();
+    await account.create(userId, email, password, name);
 
-  // 3. Redirect to dashboard
-  redirect("/dashboard");
+    // 2. Create the Session immediately
+    const session = await account.createEmailPasswordSession(email, password);
+
+    // 3. Set the Cookie (Critical for your createSessionClient to work later)
+    cookies().set("appwrite-session", session.secret, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "strict",
+      secure: true,
+      expires: new Date(session.expire),
+    });
+
+    // 4. Create the User Document in Database
+    // Ensure these ENV variables are set in .env.local
+    await databases.createDocument(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+      process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID!,
+      userId, // Use same ID as Auth Account for easy linking
+      {
+        name,
+        email,
+        phone,
+        dob,
+        location,
+        role: "guest", // Default
+        kycStatus: "unverified", // Default
+      }
+    );
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Signup Action Error:", error);
+
+    // Return readable errors to the UI
+    let message = error.message || "An unexpected error occurred.";
+    if (error.code === 409) {
+      if (message.includes("email"))
+        message = "This email is already registered.";
+      else if (message.includes("phone"))
+        message = "This phone number is already registered.";
+      else message = "User already exists.";
+    }
+
+    return { error: message };
+  }
 }
 
-export async function signUp(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
-  const phone = formData.get("phone") as string;
-  const role = formData.get("role") as string; // 'host' or 'guest'
-  const dob = formData.get("dob") as string;
+export async function getLoggedInUser() {
+  try {
+    const { account } = await createSessionClient();
+    return await account.get();
+  } catch (error) {
+    // If no session exists, specific Appwrite errors are thrown.
+    // We return null to indicate "Not Logged In"
+    return null;
+  }
+}
 
-  const { account, databases } = await createAdminClient();
+export async function logout() {
+  try {
+    const { account } = await createSessionClient();
 
-  const userId = ID.unique();
+    // Delete the session from Appwrite
+    await account.deleteSession("current");
 
-  // create the Auth Account
-  await account.create(userId, email, password, name);
+    // Delete the cookie from the browser
+    cookies().delete("appwrite-session");
+  } catch (error) {
+    console.error("Logout failed", error);
+    // Even if Appwrite fails, we force delete the cookie
+    cookies().delete("appwrite-session");
+  }
 
-  const session = await account.createEmailPasswordSession(email, password);
+  // Redirect to home page after logout
+  redirect("/");
+}
 
-  await databases.createDocument(
-    process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-    process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ID!,
-    userId,
-    {
-      fullName: name,
-      email: email,
-      phone: phone,
-      role: role,
-      dob: dob,
-      isVerified: false,
-      kycStatus: "none",
-    },
-    // 5. Set Permissions: Public can read, only User can update their own
-    [Permission.read(Role.any()), Permission.update(Role.user(userId))]
-  );
+export async function signinWithAppwrite(formData) {
+  const { email, password } = formData;
 
-  cookies().set("appwrite-session", session.secret, {
-    path: "/",
-    httpOnly: true,
-    sameSite: "strict",
-    secure: true,
-  });
+  try {
+    // Init Admin Client
+    const { account } = await createAdminClient();
+
+    // Create Session
+    const session = await account.createEmailPasswordSession(email, password);
+
+    // Set Cookie securely
+    cookies().set("appwrite-session", session.secret, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "strict",
+      secure: true,
+      expires: new Date(session.expire),
+    });
+
+    return { success: true };
+  } catch (error) {
+    // Return the specific error message from Appwrite if available
+    return { error: error.message || "Invalid email or password" };
+  }
+}
+
+// 2. Forgot Password Action
+export async function sendPasswordRecovery(email) {
+  try {
+    const { account } = await createAdminClient();
+
+    await account.createRecovery(
+      email,
+      process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`
+        : "http://localhost:3000/reset-password"
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Recovery Error:", error);
+    return { error: error.message || "Failed to send recovery email" };
+  }
 }

@@ -3,9 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
+import { User, LogOut } from "lucide-react";
+import { logout } from "@/actions/auth";
 
-const Navbar = () => {
+const Navbar = ({ user }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -15,13 +21,15 @@ const Navbar = () => {
     <div className="relative flex justify-between items-center px-6 py-4 md:px-20 bg-white z-50">
       {/* --- LOGO --- */}
       <div className="flex shrink-0">
-        <Image
-          src={"/cozncr_t.png"}
-          height={400}
-          width={1000}
-          alt="Logo"
-          className="h-12 w-24 object-contain"
-        />
+        <Link href={"/"}>
+          <Image
+            src={"/cozncr_t.png"}
+            height={400}
+            width={1000}
+            alt="Logo"
+            className="h-12 w-24 object-contain"
+          />
+        </Link>
       </div>
 
       {/* --- DESKTOP NAVIGATION (Hidden on mobile, Flex on md) --- */}
@@ -40,9 +48,27 @@ const Navbar = () => {
       {/* --- RIGHT SIDE (Auth + Mobile Toggle) --- */}
       <div className="flex items-center gap-4">
         {/* Auth Button (Always visible) */}
-        <button className="bg-black py-2 px-6 rounded-xl shadow-md text-slate-200 hover:shadow-lg hover:bg-slate-950 transition-all">
-          <Link href={"/signin"}>Sign In</Link>
-        </button>
+        {user ? (
+          <div className="flex items-center gap-4">
+            <button className="bg-black text-white rounded-full p-1 hover:bg-slate-950 hover:shadow-md">
+              <Link href={"/profile"}>
+                <User />
+              </Link>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-black py-2 px-4 rounded-xl transition-all"
+            >
+              <LogOut size={18} />
+              <span className="hidden md:inline">Logout</span>
+            </button>
+          </div>
+        ) : (
+          <button className="bg-black py-2 px-6 rounded-xl shadow-md text-slate-200 hover:shadow-lg hover:bg-slate-950 transition-all">
+            <Link href={"/signin"}>Sign In</Link>
+          </button>
+        )}
 
         {/* Hamburger Icon (Visible on mobile only) */}
         <button
