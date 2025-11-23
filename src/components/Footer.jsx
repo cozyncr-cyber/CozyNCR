@@ -3,7 +3,7 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <div className="flex bg-slate-100 justify-between px-4 md:px-8 py-4 rounded-t-md text-sm">
+    <div className="flex bg-slate-100 justify-between px-4 md:px-8 py-4 rounded-t-md text-xs md:text-sm">
       <div className="flex gap-2">
         <p className="text-slate-600">&copy; 2025 Cozy NCR</p>
         <p className="text-slate-600">Privacy</p>

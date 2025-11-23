@@ -1,6 +1,7 @@
 "use client"; // Required for useState
 
 import Image from "next/image";
+import Link from "next/link";
 import React, { useState } from "react";
 
 const Navbar = () => {
@@ -40,7 +41,7 @@ const Navbar = () => {
       <div className="flex items-center gap-4">
         {/* Auth Button (Always visible) */}
         <button className="bg-black py-2 px-6 rounded-xl shadow-md text-slate-200 hover:shadow-lg hover:bg-slate-950 transition-all">
-          Sign In
+          <Link href={"/signin"}>Sign In</Link>
         </button>
 
         {/* Hamburger Icon (Visible on mobile only) */}

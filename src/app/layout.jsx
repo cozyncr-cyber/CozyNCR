@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         <Navbar />
-        {children}
+        <section className="min-h-[90vh]">{children}</section>i
         <Footer />
       </body>
     </html>
