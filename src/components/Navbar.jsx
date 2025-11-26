@@ -35,7 +35,7 @@ const Navbar = ({ user }) => {
       {/* --- DESKTOP NAVIGATION (Hidden on mobile, Flex on md) --- */}
       <div className="hidden md:flex gap-6">
         <button className="outline-none border-b-2 border-transparent hover:border-black transition-colors">
-          My Listings
+          <Link href="/mylistings">My Listings</Link>
         </button>
         <button className="outline-none border-b-2 border-transparent hover:border-black transition-colors">
           Calendar
@@ -123,7 +123,7 @@ const Navbar = ({ user }) => {
             onClick={() => setIsMenuOpen(false)}
             className="outline-none hover:text-gray-600"
           >
-            My Listings
+            <Link href="/mylistings">My Listings</Link>
           </button>
           <button
             onClick={() => setIsMenuOpen(false)}

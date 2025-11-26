@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Query } from "node-appwrite";
 
-export async function signupWithAppwrite(formData: any) {
+export async function signupWithAppwrite(formData) {
   const { name, email, password, phone, dob, location } = formData;
 
   try {
@@ -31,8 +31,8 @@ export async function signupWithAppwrite(formData: any) {
     // 4. Create the User Document in Database
     // Ensure these ENV variables are set in .env.local
     await databases.createDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID!,
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID,
       userId, // Use same ID as Auth Account for easy linking
       {
         name,
@@ -46,7 +46,7 @@ export async function signupWithAppwrite(formData: any) {
     );
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Signup Action Error:", error);
 
     // Return readable errors to the UI
