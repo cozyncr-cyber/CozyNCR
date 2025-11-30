@@ -1,266 +1,136 @@
+"use client";
+
 import React, { useState } from "react";
-import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  Loader2,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
-// Import the server actions we created
-import { signinWithAppwrite, sendPasswordRecovery } from "@/actions/auth";
-import { redirect, useRouter } from "next/navigation";
+import { Eye, EyeOff, Mail, Lock, Loader2, ArrowRight } from "lucide-react";
+import { signinWithAppwrite } from "@/actions/auth";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const SigninForm = () => {
   const router = useRouter();
-
-  // View state: 'signin' or 'forgot_password'
-  const [view, setView] = useState("signin");
-
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [recoverySent, setRecoverySent] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    if (errors[name]) setErrors({ ...errors, [name]: "" });
-    // Clear global errors when typing
-    if (errors.general) setErrors({ ...errors, general: "" });
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.email) newErrors.email = "Email is required";
-
-    // Only validate password if we are in signin view
-    if (view === "signin" && !formData.password) {
-      newErrors.password = "Password is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-
     setIsLoading(true);
-    setErrors({});
+    setError("");
 
     try {
-      if (view === "signin") {
-        // --- Handle Login ---
-        const result = await signinWithAppwrite(formData);
-
-        if (result.error) {
-          setErrors({ general: result.error });
-        } else {
-          // Ideally, redirect here
-          router.refresh();
-          router.push("/"); // Update auth state
-        }
+      const result = await signinWithAppwrite(formData);
+      if (result.error) {
+        setError(result.error);
       } else {
-        // --- Handle Forgot Password ---
-        const result = await sendPasswordRecovery(formData.email);
-
-        if (result.error) {
-          setErrors({ general: result.error });
-        } else {
-          setRecoverySent(true);
-        }
+        router.refresh();
+        router.push("/");
       }
     } catch (err) {
-      setErrors({ general: "Something went wrong. Please try again." });
+      setError("An unexpected error occurred.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleView = () => {
-    setView(view === "signin" ? "forgot_password" : "signin");
-    setErrors({});
-    setRecoverySent(false);
-  };
-
   return (
-    <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden transition-all duration-300">
-      {/* Header */}
-      <div className="px-8 pt-8 pb-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {view === "signin" ? "Welcome Back" : "Reset Password"}
+    <div className="w-full max-w-md">
+      <div className="mb-10">
+        <h1 className="text-4xl font-serif font-bold text-gray-900 mb-3">
+          Welcome Back
         </h1>
-        <p className="text-gray-500 text-sm">
-          {view === "signin"
-            ? "Enter your details to access your account"
-            : "Enter your email to receive a recovery link"}
+        <p className="text-gray-500">
+          Enter your details to manage your listings.
         </p>
       </div>
 
-      {/* Success State for Recovery */}
-      {view === "forgot_password" && recoverySent ? (
-        <div className="px-8 pb-8 text-center space-y-4">
-          <div className="flex justify-center">
-            <CheckCircle2 className="h-16 w-16 text-green-500" />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error Alert */}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+            <div className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+            {error}
           </div>
-          <h3 className="text-xl font-bold text-gray-900">Check your email</h3>
-          <p className="text-gray-500 text-sm">
-            We&apos;ve sent a password recovery link to <br />
-            <span className="font-medium text-gray-900">{formData.email}</span>
-          </p>
-          <button
-            onClick={toggleView}
-            className="w-full mt-4 text-black font-bold hover:underline"
-          >
-            Back to Sign In
-          </button>
-        </div>
-      ) : (
-        /* Main Form */
-        <form onSubmit={handleSubmit} className="px-8 pb-8 space-y-6">
-          {/* Global Error Message */}
-          {errors.general && (
-            <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-red-500" />
-              {errors.general}
-            </div>
-          )}
+        )}
 
-          {/* Email */}
-          <div className="space-y-1">
-            <Label htmlFor="email">Email ID</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <Input
-                id="email"
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-bold text-gray-900 ml-1">
+              Email Address
+            </label>
+            <div className="relative group">
+              <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
+              <input
                 name="email"
                 type="email"
-                placeholder="john@example.com"
+                required
+                placeholder="you@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                error={errors.email}
-                className="pl-10"
+                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all font-medium text-gray-900 placeholder:text-gray-400"
               />
             </div>
-            {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
           </div>
 
-          {/* Password - Only show in Signin view */}
-          {view === "signin" && (
-            <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  error={errors.password}
-                  className="pl-10 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <ErrorMessage>{errors.password}</ErrorMessage>
-              )}
-
-              {/* Forgot Password Link Trigger */}
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={toggleView}
-                  className="text-xs font-bold text-purple-600 hover:text-purple-800 transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-black text-white py-3.5 rounded-2xl font-bold text-lg hover:bg-gray-800 hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <>
-                {view === "signin" ? "Sign In" : "Send Recovery Link"}{" "}
-                <ArrowRight size={20} />
-              </>
-            )}
-          </button>
-
-          {/* Footer / Back Button */}
-          <div className="text-center mt-6 pb-2">
-            {view === "signin" ? (
-              <p className="text-sm text-gray-500">
-                Don&apos;t have an account?{" "}
-                <a
-                  href="/signup"
-                  className="font-bold text-black underline hover:text-gray-700"
-                >
-                  Sign Up
-                </a>
-              </p>
-            ) : (
+          <div className="space-y-1.5">
+            <label className="block text-sm font-bold text-gray-900 ml-1">
+              Password
+            </label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all font-medium text-gray-900 placeholder:text-gray-400"
+              />
               <button
                 type="button"
-                onClick={toggleView}
-                className="text-sm text-gray-500 hover:text-black flex items-center justify-center gap-1 w-full"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
               >
-                <ArrowLeft size={16} /> Back to Login
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
-            )}
+            </div>
           </div>
-        </form>
-      )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-black hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4"
+        >
+          {isLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <>
+              Sign In <ArrowRight size={20} />
+            </>
+          )}
+        </button>
+
+        <div className="text-center pt-4">
+          <p className="text-sm text-gray-500">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-bold text-gray-900 underline decoration-gray-300 hover:decoration-gray-900 underline-offset-2 transition-all"
+            >
+              Join as a Host
+            </Link>
+          </p>
+        </div>
+      </form>
     </div>
   );
 };
-
-const Label = ({ children, htmlFor }) => (
-  <label
-    htmlFor={htmlFor}
-    className="block text-sm font-bold text-gray-900 mb-1"
-  >
-    {children}
-  </label>
-);
-
-const Input = ({ className = "", error, ...props }) => (
-  <input
-    className={`w-full px-4 py-3 rounded-xl border bg-gray-50 focus:bg-white outline-none transition-all duration-200 ${
-      error
-        ? "border-red-500 focus:ring-2 focus:ring-red-200"
-        : "border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-100"
-    } ${className}`}
-    {...props}
-  />
-);
-
-const ErrorMessage = ({ children }) => (
-  <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{children}</p>
-);
 
 export default SigninForm;

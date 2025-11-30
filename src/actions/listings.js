@@ -1,234 +1,112 @@
 "use server";
-import { Query } from "node-appwrite";
 
+import { ID, Query } from "node-appwrite";
 import { createSessionClient } from "@/lib/appwrite";
-import { ID } from "node-appwrite";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { getLoggedInUser } from "./auth";
 
-export async function createListing(formData) {
-  // 1. Initialize Client
-  const { account, databases, storage } = await createSessionClient();
+const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
+const LISTINGS_COLLECTION_ID =
+  process.env.NEXT_PUBLIC_APPWRITE_PROPERTIES_COLLECTION_ID;
+const BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID;
 
-  // 2. Verify User
-  let user;
-  try {
-    user = await account.get();
-  } catch (error) {
-    return { error: "You must be logged in to create a listing." };
-  }
-
-  try {
-    // 3. Extract Files
-    // formData.getAll returns an array of File objects, just like formData.get returns one
-    const files = formData.getAll("images");
-
-    // 4. Upload Images to Storage
-    const imageUploadPromises = files.map(async (file) => {
-      return storage.createFile(
-        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID,
-        ID.unique(),
-        file
-      );
-    });
-
-    const uploadedFiles = await Promise.all(imageUploadPromises);
-    const imageIds = uploadedFiles.map((file) => file.$id);
-    const thumbnailId = imageIds.length > 0 ? imageIds[0] : null;
-
-    // 5. Construct Database Object
-    const dbPayload = {
-      ownerId: user.$id,
-      title: formData.get("title"),
-      description: formData.get("description"),
-      category: formData.get("category"),
-      maxGuests: parseInt(formData.get("maxGuests")),
-
-      address: formData.get("address"),
-      city: formData.get("city"),
-      state: formData.get("state"),
-      latitude: parseFloat(formData.get("latitude")),
-      longitude: parseFloat(formData.get("longitude")),
-
-      // Operations
-      weekdayOpen: formData.get("weekdayOpen"),
-      weekdayClose: formData.get("weekdayClose"),
-      weekendOpen: formData.get("weekendOpen"),
-      weekendClose: formData.get("weekendClose"),
-      bufferTime: parseInt(formData.get("bufferTime")),
-
-      // Pricing
-      weekendMultiplier: parseInt(formData.get("weekendMultiplier") || "0"),
-      price_1h: formData.get("price_1h")
-        ? parseInt(formData.get("price_1h"))
-        : null,
-      price_3h: formData.get("price_3h")
-        ? parseInt(formData.get("price_3h"))
-        : null,
-      price_6h: formData.get("price_6h")
-        ? parseInt(formData.get("price_6h"))
-        : null,
-      price_12h: formData.get("price_12h")
-        ? parseInt(formData.get("price_12h"))
-        : null,
-      price_24h: formData.get("price_24h")
-        ? parseInt(formData.get("price_24h"))
-        : null,
-
-      // Arrays
-      amenities: formData.getAll("amenities"),
-      imageIds: imageIds,
-      thumbnail: thumbnailId,
-    };
-
-    // 6. Save to Database
-    await databases.createDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-      process.env.NEXT_PUBLIC_APPWRITE_LISTING_COLLECTION_ID,
-      ID.unique(),
-      dbPayload
-    );
-  } catch (error) {
-    console.error("Listing Creation Error:", error);
-    return { error: `Failed to create listing: ${error.message}` };
-  }
-
-  // 7. Success
-  revalidatePath("/mylistings");
-  redirect("/mylistings");
+if (!LISTINGS_COLLECTION_ID) {
+  throw new Error("Listing Collection ID is missing.");
 }
 
-export async function getUserListings(page = 1) {
-  const { account, databases } = await createSessionClient();
+// --- FETCH USER PROPERTIES ---
+export async function getUserProperties() {
+  const user = await getLoggedInUser();
+  if (!user) return [];
 
-  try {
-    // 1. Get current user
-    const user = await account.get();
-
-    // 2. Pagination Math
-    const PAGE_LIMIT = 9; // Show 9 cards per page
-    const offset = (page - 1) * PAGE_LIMIT;
-
-    // 3. Fetch Documents
-    const result = await databases.listDocuments(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-      process.env.NEXT_PUBLIC_APPWRITE_LISTING_COLLECTION_ID,
-      [
-        Query.equal("ownerId", user.$id), // Only my listings
-        Query.orderDesc("$createdAt"), // Newest first
-        Query.limit(PAGE_LIMIT),
-        Query.offset(offset),
-      ]
-    );
-
-    return {
-      listings: result.documents,
-      total: result.total,
-      limit: PAGE_LIMIT,
-    };
-  } catch (error) {
-    console.error("Error fetching listings:", error);
-    return { listings: [], total: 0, limit: 9 };
-  }
-}
-
-export async function getListingById(listingId) {
   const { databases } = await createSessionClient();
+
   try {
-    const listing = await databases.getDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-      process.env.NEXT_PUBLIC_APPWRITE_LISTING_COLLECTION_ID,
-      listingId
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      [Query.equal("ownerId", user.$id), Query.orderDesc("$createdAt")]
     );
-    return listing;
+    return result.documents;
   } catch (error) {
-    console.error("Fetch Error:", error);
-    return null;
+    console.error("Fetch Properties Error:", error);
+    return [];
   }
 }
 
-export async function deleteListing(listingId) {
+// --- DELETE PROPERTY ---
+export async function deleteProperty(formData) {
+  const propertyId = formData.get("propertyId");
   const { databases } = await createSessionClient();
   try {
     await databases.deleteDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-      process.env.NEXT_PUBLIC_APPWRITE_LISTING_COLLECTION_ID,
-      listingId
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      propertyId
     );
-    revalidatePath("/mylistings");
+    revalidatePath("/properties");
+    revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
+    console.error("Delete Error", error);
     return { error: "Failed to delete" };
   }
 }
 
-export async function updateListing(formData) {
-  const { account, databases, storage } = await createSessionClient();
+// --- CREATE LISTING ---
+export async function createListing(formData) {
+  const user = await getLoggedInUser();
+  if (!user) return { error: "Not authenticated" };
 
-  // 1. Verify User
-  let user;
-  try {
-    user = await account.get();
-  } catch (error) {
-    return { error: "Unauthorized" };
-  }
-
-  const listingId = formData.get("listingId");
-  const ownerId = formData.get("ownerId");
-
-  // Security Check
-  if (user.$id !== ownerId) {
-    return { error: "You are not the owner of this listing" };
-  }
+  const { databases, storage } = await createSessionClient();
 
   try {
-    // 2. Handle Images
+    // 1. Upload New Images
+    const files = formData.getAll("newImages");
+    const newImageIds = [];
 
-    // A. Get IDs of old images the user KEPT
-    const keptImageIds = formData.getAll("keptImageIds");
-
-    // B. Upload NEW images
-    const newFiles = formData.getAll("newImages");
-    const newImagePromises = newFiles.map(async (file) => {
-      if (file.size === 0) return null; // Ignore empty inputs
-
-      // Use the same direct upload logic that works in createListing
-      return storage.createFile(
-        process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID,
-        ID.unique(),
-        file
+    if (files.length > 0) {
+      const uploadPromises = files.map((file) =>
+        storage.createFile(BUCKET_ID, ID.unique(), file)
       );
-    });
+      const uploadedFiles = await Promise.all(uploadPromises);
+      uploadedFiles.forEach((f) => newImageIds.push(f.$id));
+    }
 
-    const newUploadedFiles = await Promise.all(newImagePromises);
-    const newImageIds = newUploadedFiles
-      .filter((f) => f !== null)
-      .map((f) => f.$id);
-
-    // C. Combine (Kept + New)
-    const finalImageIds = [...keptImageIds, ...newImageIds];
-    const thumbnailId = finalImageIds.length > 0 ? finalImageIds[0] : null;
-
-    // 3. Prepare DB Payload
-    const dbPayload = {
+    // 2. Prepare Data
+    const listingData = {
+      ownerId: user.$id,
       title: formData.get("title"),
       description: formData.get("description"),
       category: formData.get("category"),
-      maxGuests: parseInt(formData.get("maxGuests")),
 
       address: formData.get("address"),
       city: formData.get("city"),
       state: formData.get("state"),
-      latitude: parseFloat(formData.get("latitude")),
-      longitude: parseFloat(formData.get("longitude")),
+      latitude: parseFloat(formData.get("latitude") || 0),
+      longitude: parseFloat(formData.get("longitude") || 0),
+
+      // Guest Counts
+      maxGuests: parseInt(formData.get("maxGuests")), // Adults
+      maxChildren: parseInt(formData.get("maxChildren") || 0),
+      maxInfants: parseInt(formData.get("maxInfants") || 0),
+      maxPets: parseInt(formData.get("maxPets") || 0),
+
+      amenities: formData.getAll("amenities"),
+
+      // Add-ons (Services) stored as JSON string
+      addOns: formData.get("addOns") || "[]",
+
+      imageIds: newImageIds,
+      thumbnail: newImageIds.length > 0 ? newImageIds[0] : null,
 
       weekdayOpen: formData.get("weekdayOpen"),
       weekdayClose: formData.get("weekdayClose"),
       weekendOpen: formData.get("weekendOpen"),
       weekendClose: formData.get("weekendClose"),
-      bufferTime: parseInt(formData.get("bufferTime")),
+      bufferTime: parseInt(formData.get("bufferTime") || 0),
+      weekendMultiplier: parseInt(formData.get("weekendMultiplier") || 0),
 
-      weekendMultiplier: parseInt(formData.get("weekendMultiplier") || "0"),
       price_1h: formData.get("price_1h")
         ? parseInt(formData.get("price_1h"))
         : null,
@@ -244,24 +122,137 @@ export async function updateListing(formData) {
       price_24h: formData.get("price_24h")
         ? parseInt(formData.get("price_24h"))
         : null,
-
-      amenities: formData.getAll("amenities"),
-      imageIds: finalImageIds,
-      thumbnail: thumbnailId,
     };
 
-    // 4. Update Document
-    await databases.updateDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-      process.env.NEXT_PUBLIC_APPWRITE_LISTING_COLLECTION_ID,
-      listingId,
-      dbPayload
+    const doc = await databases.createDocument(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      ID.unique(),
+      listingData
     );
-  } catch (error) {
-    console.error("Update Error:", error);
-    return { error: "Failed to update listing" };
-  }
 
-  revalidatePath(`/mylistings/${listingId}`);
-  redirect(`/mylistings/${listingId}`);
+    revalidatePath("/dashboard");
+    revalidatePath("/properties");
+    return { success: true, id: doc.$id };
+  } catch (error) {
+    console.error("Create Listing Error:", error);
+    return { error: error.message };
+  }
+}
+
+// --- UPDATE LISTING ---
+export async function updateListing(formData) {
+  const user = await getLoggedInUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { databases, storage } = await createSessionClient();
+  const listingId = formData.get("listingId");
+
+  try {
+    // 1. Handle New Uploads
+    const newFiles = formData.getAll("newImages");
+    const newFileIds = [];
+
+    if (newFiles.length > 0) {
+      const uploadPromises = newFiles.map((file) =>
+        storage.createFile(BUCKET_ID, ID.unique(), file)
+      );
+      const uploaded = await Promise.all(uploadPromises);
+      uploaded.forEach((f) => newFileIds.push(f.$id));
+    }
+
+    // 2. Reconstruct Image Order
+    const orderMap = JSON.parse(formData.get("finalImageOrder") || "[]");
+    let finalImageIds = [];
+
+    orderMap.forEach((item) => {
+      if (item.startsWith("new_")) {
+        const index = parseInt(item.split("_")[1]);
+        if (newFileIds[index]) finalImageIds.push(newFileIds[index]);
+      } else {
+        finalImageIds.push(item);
+      }
+    });
+
+    if (finalImageIds.length === 0 && newFileIds.length > 0) {
+      finalImageIds = [...newFileIds];
+    }
+
+    const listingData = {
+      title: formData.get("title"),
+      description: formData.get("description"),
+      category: formData.get("category"),
+
+      address: formData.get("address"),
+      city: formData.get("city"),
+      state: formData.get("state"),
+      latitude: parseFloat(formData.get("latitude") || 0),
+      longitude: parseFloat(formData.get("longitude") || 0),
+
+      // Guest Counts
+      maxGuests: parseInt(formData.get("maxGuests")),
+      maxChildren: parseInt(formData.get("maxChildren") || 0),
+      maxInfants: parseInt(formData.get("maxInfants") || 0),
+      maxPets: parseInt(formData.get("maxPets") || 0),
+
+      amenities: formData.getAll("amenities"),
+
+      // Add-ons
+      addOns: formData.get("addOns") || "[]",
+
+      imageIds: finalImageIds,
+      thumbnail: finalImageIds.length > 0 ? finalImageIds[0] : null,
+
+      weekdayOpen: formData.get("weekdayOpen"),
+      weekdayClose: formData.get("weekdayClose"),
+      weekendOpen: formData.get("weekendOpen"),
+      weekendClose: formData.get("weekendClose"),
+      bufferTime: parseInt(formData.get("bufferTime") || 0),
+      weekendMultiplier: parseInt(formData.get("weekendMultiplier") || 0),
+
+      price_1h: formData.get("price_1h")
+        ? parseInt(formData.get("price_1h"))
+        : null,
+      price_3h: formData.get("price_3h")
+        ? parseInt(formData.get("price_3h"))
+        : null,
+      price_6h: formData.get("price_6h")
+        ? parseInt(formData.get("price_6h"))
+        : null,
+      price_12h: formData.get("price_12h")
+        ? parseInt(formData.get("price_12h"))
+        : null,
+      price_24h: formData.get("price_24h")
+        ? parseInt(formData.get("price_24h"))
+        : null,
+    };
+
+    await databases.updateDocument(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      listingId,
+      listingData
+    );
+
+    revalidatePath("/properties");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("Update Listing Error:", error);
+    return { error: error.message };
+  }
+}
+
+export async function getListingById(id) {
+  const { databases } = await createSessionClient();
+  try {
+    const doc = await databases.getDocument(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      id
+    );
+    return doc;
+  } catch (error) {
+    return null;
+  }
 }

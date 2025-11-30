@@ -1,146 +1,128 @@
-"use client"; // Required for useState
+"use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
-import { User, LogOut } from "lucide-react";
+import { LogOut, Menu, X, Home, User, ArrowRight } from "lucide-react";
 import { logout } from "@/actions/auth";
+import Image from "next/image";
 
-const Navbar = ({ user }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-  };
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+export default function Navbar({ user }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="relative flex justify-between items-center px-6 py-4 md:px-20 bg-white z-50">
-      {/* --- LOGO --- */}
-      <div className="flex shrink-0">
-        <Link href={"/"}>
-          <Image
-            src={"/cozncr_t.png"}
-            height={400}
-            width={1000}
-            alt="Logo"
-            className="h-12 w-24 object-contain"
-          />
-        </Link>
-      </div>
-
-      {/* --- DESKTOP NAVIGATION (Hidden on mobile, Flex on md) --- */}
-      <div className="hidden md:flex gap-6">
-        <button className="outline-none border-b-2 border-transparent hover:border-black transition-colors">
-          <Link href="/mylistings">My Listings</Link>
-        </button>
-        <button className="outline-none border-b-2 border-transparent hover:border-black transition-colors">
-          Calendar
-        </button>
-        <button className="outline-none border-b-2 border-transparent hover:border-black transition-colors">
-          Another Functionality
-        </button>
-      </div>
-
-      {/* --- RIGHT SIDE (Auth + Mobile Toggle) --- */}
-      <div className="flex items-center gap-4">
-        {/* Auth Button (Always visible) */}
-        {user ? (
+    <>
+      {/* FIXED TOP NAVBAR */}
+      <nav className="fixed top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-100 h-16 transition-all duration-300">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-full">
+          {/* LEFT: Logo & Mobile Toggle */}
           <div className="flex items-center gap-4">
-            <button className="bg-black text-white rounded-full p-1 hover:bg-slate-950 hover:shadow-md">
-              <Link href={"/profile"}>
-                <User />
-              </Link>
-            </button>
-
             <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-black py-2 px-4 rounded-xl transition-all"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg md:hidden"
             >
-              <LogOut size={18} />
-              <span className="hidden md:inline">Logout</span>
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
+
+            <Link href="/" className="flex items-center gap-2 group">
+              <Image
+                src={"/cozncr_t.png"}
+                height={400}
+                width={1000}
+                alt="Logo"
+                className="h-12 w-24 object-contain"
+              />
+            </Link>
           </div>
-        ) : (
-          <button className="bg-black py-2 px-6 rounded-xl shadow-md text-slate-200 hover:shadow-lg hover:bg-slate-950 transition-all">
-            <Link href={"/signin"}>Sign In</Link>
-          </button>
-        )}
 
-        {/* Hamburger Icon (Visible on mobile only) */}
-        <button
-          onClick={toggleMenu}
-          className="md:hidden p-2 focus:outline-none"
-        >
-          {isMenuOpen ? (
-            // Close Icon (X)
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-8 h-8"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          ) : (
-            // Hamburger Icon
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-8 h-8"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-              />
-            </svg>
-          )}
-        </button>
-      </div>
+          {/* RIGHT: Actions */}
+          <div className="flex items-center gap-4">
+            {user ? (
+              <>
+                {/* Authenticated State */}
+                <Link
+                  href="/dashboard"
+                  className="hidden md:flex items-center justify-center p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-full transition-all"
+                  title="Go to Dashboard"
+                >
+                  <div className="h-8 w-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
+                    <User size={18} className="text-gray-700" />
+                  </div>
+                </Link>
 
-      {/* --- MOBILE DRAWER --- */}
+                <button
+                  onClick={() => logout()}
+                  className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-200"
+                >
+                  <LogOut size={16} />
+                  <span>Sign out</span>
+                </button>
+              </>
+            ) : (
+              /* Guest State */
+              <Link
+                href="/signin"
+                className="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
+              >
+                Start Hosting <ArrowRight size={16} />
+              </Link>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* MOBILE DRAWER */}
       <div
-        className={`fixed inset-0 z-40 bg-white flex flex-col justify-center items-center transition-transform duration-300 ease-in-out md:hidden ${
-          isMenuOpen ? "translate-x-0" : "translate-x-full"
+        className={`fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out md:hidden ${
+          isMobileMenuOpen
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-full pointer-events-none"
         }`}
-        style={{ top: "80px" }}
       >
-        <div className="flex flex-col gap-8 text-xl font-medium">
-          <button
-            onClick={() => setIsMenuOpen(false)}
-            className="outline-none hover:text-gray-600"
-          >
-            <Link href="/mylistings">My Listings</Link>
-          </button>
-          <button
-            onClick={() => setIsMenuOpen(false)}
-            className="outline-none hover:text-gray-600"
-          >
-            Calendar
-          </button>
-          <button
-            onClick={() => setIsMenuOpen(false)}
-            className="outline-none hover:text-gray-600"
-          >
-            Another Functionality
-          </button>
+        <div className="p-4 space-y-2">
+          {user ? (
+            <>
+              <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Account
+              </div>
+              <Link
+                href="/dashboard"
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/properties"
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+              >
+                My Listings
+              </Link>
+              <Link
+                href="/profile"
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+              >
+                Profile
+              </Link>
+              <div className="border-t border-gray-100 my-2 pt-2">
+                <button
+                  onClick={() => logout()}
+                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
+                >
+                  <LogOut size={16} /> Sign out
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="p-2">
+              <Link
+                href="/signin"
+                className="block w-full text-center px-4 py-3 bg-black text-white rounded-xl font-bold"
+              >
+                Sign In / Sign Up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </>
   );
-};
-
-export default Navbar;
+}

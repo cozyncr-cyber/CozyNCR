@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import {
   Eye,
@@ -7,10 +9,11 @@ import {
   User,
   Mail,
   Phone,
-  CheckCircle,
+  CheckCircle2,
   Loader2,
   ArrowRight,
   AlertCircle,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,7 +22,6 @@ import { signupWithAppwrite } from "@/actions/auth";
 const SignupForm = () => {
   const router = useRouter();
 
-  // Form State
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -32,13 +34,12 @@ const SignupForm = () => {
     agreedToTerms: false,
   });
 
-  // UI/Logic State
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
-  // OTP Specific State
+  // OTP State
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
@@ -49,57 +50,44 @@ const SignupForm = () => {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
-    // Clear error for this field when user types
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: "" });
-    }
+    if (errors[name]) setErrors({ ...errors, [name]: "" });
   };
 
-  // --- Helper: Age Validation (18+) ---
+  // --- Logic Helpers ---
   const isAtLeast18 = (dobString) => {
     if (!dobString) return false;
     const today = new Date();
     const birthDate = new Date(dobString);
     let age = today.getFullYear() - birthDate.getFullYear();
     const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
     return age >= 18;
   };
 
-  // --- Helper: Strong Password Regex ---
   const isStrongPassword = (password) => {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-    return regex.test(password);
+    // Simplified regex for UX, enforce length + visual strength
+    return password.length >= 8;
   };
 
-  // Simulate Sending OTP
   const handleSendOtp = async () => {
     if (!formData.email || !/\S+@\S+\.\S+/.test(formData.email)) {
-      setErrors({ ...errors, email: "Please enter a valid email first." });
+      setErrors({ ...errors, email: "Enter a valid email first." });
       return;
     }
-
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulating API
     setIsLoading(false);
     setOtpSent(true);
-    alert(`OTP sent to ${formData.email}. (Use code 1234)`);
   };
 
-  // Simulate Verifying OTP
   const handleVerifyOtp = async () => {
     setIsVerifyingOtp(true);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
     if (formData.otp === "1234") {
       setOtpVerified(true);
       setErrors({ ...errors, otp: "" });
     } else {
-      setErrors({ ...errors, otp: 'Invalid OTP. Try "1234"' });
+      setErrors({ ...errors, otp: 'Invalid OTP. Use "1234"' });
     }
     setIsVerifyingOtp(false);
   };
@@ -108,129 +96,110 @@ const SignupForm = () => {
     e.preventDefault();
     const newErrors = {};
 
-    // 1. Basic Validation
     if (!formData.name) newErrors.name = "Full name is required";
-    if (!formData.phone) newErrors.phone = "Phone number is required";
+    if (!formData.phone) newErrors.phone = "Phone is required";
     if (!formData.location) newErrors.location = "Location is required";
 
-    // 2. Age Validation
-    if (!formData.dob) {
-      newErrors.dob = "Date of birth is required";
-    } else if (!isAtLeast18(formData.dob)) {
-      newErrors.dob = "You must be at least 18 years old to sign up.";
-    }
+    if (!formData.dob) newErrors.dob = "Required";
+    else if (!isAtLeast18(formData.dob))
+      newErrors.dob = "Must be 18+ years old.";
 
-    // 3. Password Validation
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (!isStrongPassword(formData.password)) {
-      newErrors.password =
-        "Password must have 8+ chars, 1 upper, 1 lower, 1 number, & 1 symbol";
-    }
+    if (!formData.password) newErrors.password = "Required";
+    else if (!isStrongPassword(formData.password))
+      newErrors.password = "Must be at least 8 chars";
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-    if (!formData.agreedToTerms) {
-      newErrors.terms = "You must agree to the terms";
-    }
-    if (!otpVerified) {
-      newErrors.otp = "Please verify your email first";
-    }
+    if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = "Passwords match error";
+    if (!formData.agreedToTerms) newErrors.terms = "You must agree to terms";
+    if (!otpVerified) newErrors.otp = "Email verification required";
 
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
-
-      // Call Server Action
       const result = await signupWithAppwrite(formData);
-
       setIsLoading(false);
 
       if (result.success) {
-        alert("Account created successfully!");
-        // Force refresh ensures the server can read the new cookie
         router.refresh();
         router.push("/");
       } else {
-        setErrors((prev) => ({
-          ...prev,
-          backend: result.error,
-        }));
+        setErrors((prev) => ({ ...prev, backend: result.error }));
       }
     }
   };
 
   return (
-    <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden">
-      {/* Header Section */}
-      <div className="px-8 pt-8 pb-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Sign Up</h1>
-        <p className="text-gray-500 text-sm">
-          Just a few quick things to get started
+    <div className="w-full max-w-lg">
+      <div className="mb-8">
+        <h1 className="text-4xl font-serif font-bold text-gray-900 mb-3">
+          Join as a Host
+        </h1>
+        <p className="text-gray-500">
+          Create your account to start listing properties.
         </p>
       </div>
 
       {/* Backend Error Alert */}
       {errors.backend && (
-        <div className="mx-8 p-3 mb-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
-          <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-600 font-medium">{errors.backend}</p>
+        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 text-sm font-medium">
+          <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+          {errors.backend}
         </div>
       )}
 
-      {/* Form Section */}
-      <form onSubmit={handleSubmit} className="px-8 pb-8 space-y-5">
-        {/* Name Input */}
-        <div className="space-y-1">
-          <Label htmlFor="name">Full Name</Label>
+      <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Name */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+            Full Name
+          </label>
           <div className="relative">
-            <User className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-            <Input
-              id="name"
+            <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+            <input
               name="name"
-              placeholder="John Doe"
               value={formData.name}
               onChange={handleChange}
-              error={errors.name}
-              className="pl-10"
+              placeholder="John Doe"
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all font-medium text-gray-900"
             />
           </div>
-          {errors.name && <ErrorMessage>{errors.name}</ErrorMessage>}
+          {errors.name && (
+            <p className="text-red-500 text-xs ml-1">{errors.name}</p>
+          )}
         </div>
 
-        {/* Email & OTP Section */}
-        <div className="space-y-1">
-          <Label htmlFor="email">Email ID</Label>
+        {/* Email & OTP */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+            Email Address
+          </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <Input
-                id="email"
+              <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
                 name="email"
                 type="email"
-                placeholder="john@example.com"
                 value={formData.email}
                 onChange={handleChange}
-                disabled={otpVerified} // Lock email after verification
-                className={`pl-10 ${
+                disabled={otpVerified}
+                placeholder="host@example.com"
+                className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-black outline-none transition-all font-medium ${
                   otpVerified
-                    ? "bg-green-50 border-green-200 text-green-700"
-                    : ""
+                    ? "bg-green-50 border-green-200 text-green-800"
+                    : "bg-gray-50 border-gray-200"
                 }`}
               />
               {otpVerified && (
-                <CheckCircle className="absolute right-3 top-3.5 h-5 w-5 text-green-500" />
+                <CheckCircle2 className="absolute right-3 top-3.5 h-5 w-5 text-green-600" />
               )}
             </div>
-
             {!otpVerified && (
               <button
                 type="button"
                 onClick={handleSendOtp}
                 disabled={isLoading || otpSent}
-                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 disabled:bg-gray-300 transition-colors whitespace-nowrap"
+                className="px-5 bg-black text-white text-sm font-bold rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors whitespace-nowrap"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -242,23 +211,26 @@ const SignupForm = () => {
               </button>
             )}
           </div>
+          {errors.email && (
+            <p className="text-red-500 text-xs ml-1">{errors.email}</p>
+          )}
 
-          {/* OTP Input (Shows only after sending) */}
+          {/* Verify OTP Input */}
           {otpSent && !otpVerified && (
-            <div className="mt-3 flex gap-2 animate-in fade-in slide-in-from-top-2">
-              <Input
+            <div className="flex gap-2 animate-in fade-in slide-in-from-top-2 pt-2">
+              <input
                 name="otp"
-                placeholder="Enter OTP (1234)"
                 value={formData.otp}
                 onChange={handleChange}
-                className="text-center tracking-widest font-mono"
                 maxLength={4}
+                placeholder="1234"
+                className="w-full text-center tracking-widest font-mono text-lg py-2 bg-white border-2 border-black rounded-xl focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleVerifyOtp}
                 disabled={isVerifyingOtp}
-                className="px-6 py-2 bg-purple-600 text-white text-sm font-medium rounded-xl hover:bg-purple-700 disabled:bg-purple-300 transition-colors"
+                className="px-6 bg-black text-white text-sm font-bold rounded-xl hover:bg-gray-800 disabled:opacity-50"
               >
                 {isVerifyingOtp ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -268,116 +240,125 @@ const SignupForm = () => {
               </button>
             </div>
           )}
-
-          {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
-          {errors.otp && <ErrorMessage>{errors.otp}</ErrorMessage>}
+          {errors.otp && (
+            <p className="text-red-500 text-xs ml-1">{errors.otp}</p>
+          )}
         </div>
 
-        {/* Phone & Location Grid */}
+        {/* Phone & Location */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <Label htmlFor="phone">Phone</Label>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+              Phone
+            </label>
             <div className="relative">
-              <Phone className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <Input
-                id="phone"
+              <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
                 name="phone"
                 type="tel"
-                placeholder="+1 234..."
                 value={formData.phone}
                 onChange={handleChange}
-                className="pl-10"
+                placeholder="+91..."
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
               />
             </div>
-            {errors.phone && <ErrorMessage>{errors.phone}</ErrorMessage>}
+            {errors.phone && (
+              <p className="text-red-500 text-xs ml-1">{errors.phone}</p>
+            )}
           </div>
-
-          <div className="space-y-1">
-            <Label htmlFor="location">Location</Label>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+              City
+            </label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-              <Input
-                id="location"
+              <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <input
                 name="location"
-                placeholder="City, Country"
                 value={formData.location}
                 onChange={handleChange}
-                className="pl-10"
+                placeholder="Delhi"
+                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
               />
             </div>
-            {errors.location && <ErrorMessage>{errors.location}</ErrorMessage>}
+            {errors.location && (
+              <p className="text-red-500 text-xs ml-1">{errors.location}</p>
+            )}
           </div>
         </div>
 
-        {/* Date of Birth */}
-        <div className="space-y-1">
-          <Label htmlFor="dob">Date of Birth</Label>
+        {/* DOB */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+            Date of Birth
+          </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-            <Input
-              id="dob"
+            <Calendar className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+            <input
               name="dob"
               type="date"
               value={formData.dob}
               onChange={handleChange}
-              className="pl-10 text-gray-500"
+              className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium text-gray-500"
             />
           </div>
-          {errors.dob && <ErrorMessage>{errors.dob}</ErrorMessage>}
-        </div>
-
-        {/* Password Field */}
-        <div className="space-y-1">
-          <Label htmlFor="password">New Password</Label>
-          <div className="relative">
-            <Input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter New Password"
-              value={formData.password}
-              onChange={handleChange}
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
-          {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
-        </div>
-
-        {/* Confirm Password Field */}
-        <div className="space-y-1">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
-          <div className="relative">
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              placeholder="Enter Confirm Password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
-            >
-              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
-          {errors.confirmPassword && (
-            <ErrorMessage>{errors.confirmPassword}</ErrorMessage>
+          {errors.dob && (
+            <p className="text-red-500 text-xs ml-1">{errors.dob}</p>
           )}
         </div>
 
-        {/* Terms Checkbox */}
-        <div className="flex items-start pt-2">
+        {/* Password */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+              Password
+            </label>
+            <div className="relative group">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-gray-400 hover:text-black"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            </div>
+            {errors.password && (
+              <p className="text-red-500 text-[10px] ml-1 leading-tight">
+                {errors.password}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
+              Confirm
+            </label>
+            <div className="relative group">
+              <input
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="••••••"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
+              />
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-red-500 text-[10px] ml-1">
+                {errors.confirmPassword}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Terms */}
+        <div className="flex items-start gap-3 pt-2">
           <div className="flex items-center h-5">
             <input
               id="terms"
@@ -385,68 +366,49 @@ const SignupForm = () => {
               type="checkbox"
               checked={formData.agreedToTerms}
               onChange={handleChange}
-              className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-purple-300 accent-purple-600"
+              className="w-5 h-5 border-2 border-gray-300 rounded focus:ring-black text-black"
             />
           </div>
-          <label
-            htmlFor="terms"
-            className="ml-2 text-sm font-medium text-gray-900"
-          >
-            I Agree With The{" "}
-            <span className="text-purple-600 font-bold cursor-pointer">
-              Terms And Conditions
+          <label htmlFor="terms" className="text-sm text-gray-600">
+            I agree to the{" "}
+            <span className="text-black font-bold underline cursor-pointer">
+              Terms of Service
+            </span>{" "}
+            and{" "}
+            <span className="text-black font-bold underline cursor-pointer">
+              Privacy Policy
             </span>
+            .
           </label>
         </div>
-        {errors.terms && <ErrorMessage>{errors.terms}</ErrorMessage>}
+        {errors.terms && (
+          <p className="text-red-500 text-xs ml-1">{errors.terms}</p>
+        )}
 
-        {/* Submit Button */}
+        {/* Submit */}
         <button
           type="submit"
-          className="w-full bg-black text-white py-3.5 rounded-2xl font-bold text-lg hover:bg-gray-800 hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2"
+          disabled={isLoading}
+          className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-900 shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          Sign Up <ArrowRight size={20} />
+          {isLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <>
+              Create Account <ArrowRight size={20} />
+            </>
+          )}
         </button>
 
-        {/* Footer */}
-        <div className="text-center mt-6 pb-2">
-          <p className="text-sm text-gray-500">
-            Already have an account?{" "}
-            <Link
-              href="/signin"
-              className="font-bold text-black underline hover:text-gray-700"
-            >
-              Sign In
-            </Link>
-          </p>
-        </div>
+        <p className="text-center text-sm text-gray-500 pt-2">
+          Already have an account?{" "}
+          <Link href="/signin" className="font-bold text-black underline">
+            Sign In
+          </Link>
+        </p>
       </form>
     </div>
   );
 };
-
-const Label = ({ children, htmlFor }) => (
-  <label
-    htmlFor={htmlFor}
-    className="block text-sm font-bold text-gray-900 mb-1"
-  >
-    {children}
-  </label>
-);
-
-const Input = ({ className = "", error, ...props }) => (
-  <input
-    className={`w-full px-4 py-3 rounded-xl border bg-gray-50 focus:bg-white outline-none transition-all duration-200 ${
-      error
-        ? "border-red-500 focus:ring-2 focus:ring-red-200"
-        : "border-gray-200 focus:border-black focus:ring-2 focus:ring-gray-100"
-    } ${className}`}
-    {...props}
-  />
-);
-
-const ErrorMessage = ({ children }) => (
-  <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{children}</p>
-);
 
 export default SignupForm;
