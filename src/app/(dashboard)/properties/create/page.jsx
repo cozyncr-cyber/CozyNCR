@@ -1,4 +1,4 @@
-import CreateListingForm from "@/components/CreateListingForm";
+import CreateListingForm from "@/components/ListingForm";
 
 export default function CreateListingPage() {
   return (

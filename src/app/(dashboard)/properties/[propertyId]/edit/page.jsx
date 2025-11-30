@@ -1,5 +1,5 @@
 import { getListingById } from "@/actions/listings";
-import CreateListingForm from "@/components/CreateListingForm";
+import CreateListingForm from "@/components/ListingForm";
 import { redirect } from "next/navigation";
 
 export default async function EditPropertyPage({ params }) {
