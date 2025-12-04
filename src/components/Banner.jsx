@@ -8,6 +8,12 @@ import {
   Star,
   CheckCircle2,
   ArrowRight,
+  UserCheck,
+  CalendarCheck,
+  ShieldCheckIcon,
+  Shield,
+  IndianRupeeIcon,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -157,38 +163,38 @@ const Banner = () => {
 
             {/* Card 2: Vetting */}
             <FeatureCard
-              icon={ScanEye}
-              title="Vetted Guests"
-              description="Never host a stranger. Our verification system ensures you know exactly who is walking through your door."
+              icon={UserCheck}
+              title="Trusted Community"
+              description="Host with confidence. We ensure every guest provides valid contact details before they can book your property."
               benefits={[
                 {
-                  icon: MessageSquareText,
-                  title: "Pre-booking Chat",
-                  desc: "Talk before you accept.",
+                  icon: CalendarCheck,
+                  title: "Booking Control",
+                  desc: "Review requests first.",
                 },
                 {
-                  icon: CheckCircle2,
-                  title: "Identity Verified",
-                  desc: "Government ID checks.",
+                  icon: ShieldCheckIcon,
+                  title: "Verified Accounts",
+                  desc: "Phone & email checks.",
                 },
               ]}
             />
 
             {/* Card 3: Protection */}
             <FeatureCard
-              icon={ShieldCheck}
-              title="Host Protection"
-              description="Rest easy knowing your property is covered. We offer industry-leading protection for our partners."
+              icon={Shield}
+              title="Secure Hosting"
+              description="Focus on hospitality while we handle the logistics. We provide the tools to keep your earnings and property safe."
               benefits={[
                 {
-                  icon: IndianRupee,
-                  title: "₹20k Liability",
-                  desc: "Automatic coverage included.",
+                  icon: IndianRupeeIcon,
+                  title: "Secure Payments",
+                  desc: "Guaranteed on-time payouts.",
                 },
                 {
-                  icon: ShieldCheck,
-                  title: "Damage Protection",
-                  desc: "Claim support for damages.",
+                  icon: FileText,
+                  title: "House Rules",
+                  desc: "Set strict guest guidelines.",
                 },
               ]}
             />

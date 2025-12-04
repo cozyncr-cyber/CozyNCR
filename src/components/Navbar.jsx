@@ -41,11 +41,14 @@ export default function Navbar({ user }) {
                 {/* Authenticated State */}
                 <Link
                   href="/dashboard"
-                  className="hidden md:flex items-center justify-center p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-full transition-all"
+                  className="hidden md:flex items-center justify-center p-2  transition-all"
                   title="Go to Dashboard"
                 >
-                  <div className="h-8 w-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
-                    <User size={18} className="text-gray-700" />
+                  <div className="rounded-fullflex items-center justify-center">
+                    <button className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-50 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-200">
+                      <User size={16} />
+                      <span>Dashboard</span>
+                    </button>
                   </div>
                 </Link>
 

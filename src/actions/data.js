@@ -25,23 +25,31 @@ export async function submitKyc(formData) {
   const aadharFile = formData.get("aadhar");
   const otherFile = formData.get("other");
 
-  if (
-    !aadharFile ||
-    aadharFile.size === 0 ||
-    !otherFile ||
-    otherFile.size === 0
-  ) {
-    return { error: "Both documents are required." };
+  // VALIDATION: Only Aadhar is required
+  if (!aadharFile || aadharFile.size === 0) {
+    return { error: "Aadhar card document is required." };
   }
 
   try {
-    // 1. Upload Files in Parallel
-    const [aadharUpload, otherUpload] = await Promise.all([
-      storage.createFile(BUCKET_ID, ID.unique(), aadharFile),
-      storage.createFile(BUCKET_ID, ID.unique(), otherFile),
-    ]);
+    // 1. Always upload Aadhar
+    const aadharUpload = await storage.createFile(
+      BUCKET_ID,
+      ID.unique(),
+      aadharFile
+    );
 
-    // 2. Create KYC Request Record
+    // 2. Conditionally upload Other document
+    let otherFileId = null;
+    if (otherFile && otherFile.size > 0) {
+      const otherUpload = await storage.createFile(
+        BUCKET_ID,
+        ID.unique(),
+        otherFile
+      );
+      otherFileId = otherUpload.$id;
+    }
+
+    // 3. Create KYC Request Record
     await databases.createDocument(
       DATABASE_ID,
       KYC_COLLECTION_ID,
@@ -49,12 +57,12 @@ export async function submitKyc(formData) {
       {
         ownerId: user.$id,
         aadharFileId: aadharUpload.$id,
-        otherFileId: otherUpload.$id,
+        otherFileId: otherFileId, // Passed as null if not uploaded
         status: "pending",
       }
     );
 
-    // 3. Update User Status to 'pending' so UI updates
+    // 4. Update User Status to 'pending'
     await databases.updateDocument(DATABASE_ID, USER_COLLECTION_ID, user.$id, {
       kycStatus: "pending",
     });
@@ -67,8 +75,6 @@ export async function submitKyc(formData) {
     return { error: "Failed to submit documents. Please try again." };
   }
 }
-
-// --- EXISTING ACTIONS (Kept for context) ---
 
 export async function updateUserProfile(formData) {
   const user = await getLoggedInUser();

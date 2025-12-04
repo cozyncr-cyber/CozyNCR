@@ -444,8 +444,6 @@ export default function CreateListingForm({ initialData = null }) {
                     key={cat.id}
                     onClick={() => {
                       setFormData({ ...formData, category: cat.id });
-                      if (errors.category)
-                        setErrors({ ...errors, category: null });
                     }}
                     className={`border-2 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-black ${
                       formData.category === cat.id
@@ -488,23 +486,46 @@ export default function CreateListingForm({ initialData = null }) {
               />
             </div>
 
-            {/* NEW GUEST COUNTERS */}
+            {/* UPDATED GUEST COUNTERS */}
             <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
               <h3 className="font-semibold mb-4">Guest Capacity & Rules</h3>
+
+              {/* Merged Adults & Children */}
               <Counter
-                label="Adults"
-                subtitle="Ages 13+"
+                label="Guests"
+                subtitle="Total capacity (Adults + Children)"
                 value={formData.maxGuests}
                 onChange={(v) =>
                   setFormData({ ...formData, maxGuests: Math.max(1, v) })
                 }
               />
-              <Counter
-                label="Children"
-                subtitle="Ages 2-12"
-                value={formData.maxChildren}
-                onChange={(v) => setFormData({ ...formData, maxChildren: v })}
-              />
+
+              {/* Children Allowed Toggle */}
+              <div className="flex items-center justify-between py-4 border-b border-gray-100">
+                <div>
+                  <div className="font-medium text-gray-900">
+                    Allow Children
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Is this property suitable for children (2-12)?
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={formData.allowChildren !== false} // Defaults to true if undefined
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        allowChildren: e.target.checked,
+                      })
+                    }
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+                </label>
+              </div>
+
               <Counter
                 label="Infants"
                 subtitle="Under 2"
@@ -936,7 +957,9 @@ export default function CreateListingForm({ initialData = null }) {
           {STEPS[currentStep - 1].label}
         </h2>
       </div>
-      <div className="bg-white min-h-[400px]">{renderStepContent()}</div>
+      <div className="bg-white p-4 rounded-md min-h-[400px]">
+        {renderStepContent()}
+      </div>
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 md:static md:bg-transparent md:border-0 md:p-0 md:mt-8 flex justify-between z-20">
         <button
           onClick={prevStep}

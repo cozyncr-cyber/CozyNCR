@@ -170,9 +170,11 @@ export default async function PropertiesPage() {
 
         {properties.length === 0 && (
           <div className="col-span-full py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-              <Plus className="w-6 h-6 text-gray-400" />
-            </div>
+            <Link href="/properties/create">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 p-4 hover:bg-slate-200 cursor-pointer">
+                <Plus className="w-6 h-6 text-gray-400" />
+              </div>
+            </Link>
             <h3 className="text-lg font-bold text-gray-900">
               No properties yet
             </h3>

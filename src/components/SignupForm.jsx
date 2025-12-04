@@ -13,7 +13,6 @@ import {
   Loader2,
   ArrowRight,
   AlertCircle,
-  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,7 +64,6 @@ const SignupForm = () => {
   };
 
   const isStrongPassword = (password) => {
-    // Simplified regex for UX, enforce length + visual strength
     return password.length >= 8;
   };
 
@@ -155,7 +153,7 @@ const SignupForm = () => {
             Full Name
           </label>
           <div className="relative">
-            <User className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               name="name"
               value={formData.name}
@@ -176,7 +174,7 @@ const SignupForm = () => {
           </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 name="email"
                 type="email"
@@ -191,7 +189,8 @@ const SignupForm = () => {
                 }`}
               />
               {otpVerified && (
-                <CheckCircle2 className="absolute right-3 top-3.5 h-5 w-5 text-green-600" />
+                // FIXED ALIGNMENT
+                <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600" />
               )}
             </div>
             {!otpVerified && (
@@ -252,7 +251,7 @@ const SignupForm = () => {
               Phone
             </label>
             <div className="relative">
-              <Phone className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 name="phone"
                 type="tel"
@@ -271,7 +270,7 @@ const SignupForm = () => {
               City
             </label>
             <div className="relative">
-              <MapPin className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 name="location"
                 value={formData.location}
@@ -292,7 +291,7 @@ const SignupForm = () => {
             Date of Birth
           </label>
           <div className="relative">
-            <Calendar className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
+            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               name="dob"
               type="date"
@@ -319,14 +318,20 @@ const SignupForm = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
+                // Added pr-10 so text doesn't go under icon
+                className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-400 hover:text-black"
+                // FIXED ALIGNMENT
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
               >
-                <Eye className="w-4 h-4" />
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
             {errors.password && (
@@ -335,6 +340,7 @@ const SignupForm = () => {
               </p>
             )}
           </div>
+
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-gray-900 uppercase tracking-wider ml-1">
               Confirm
@@ -346,8 +352,21 @@ const SignupForm = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
+                // Added pr-10 so text doesn't go under icon
+                className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
               />
+              {/* Added missing toggle button for Confirm Password */}
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
             {errors.confirmPassword && (
               <p className="text-red-500 text-[10px] ml-1">

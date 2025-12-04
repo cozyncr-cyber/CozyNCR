@@ -64,7 +64,7 @@ const SigninForm = () => {
               Email Address
             </label>
             <div className="relative group">
-              <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />{" "}
               <input
                 name="email"
                 type="email"
@@ -82,7 +82,7 @@ const SigninForm = () => {
               Password
             </label>
             <div className="relative group">
-              <Lock className="absolute left-4 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />{" "}
               <input
                 name="password"
                 type={showPassword ? "text" : "password"}
@@ -95,7 +95,8 @@ const SigninForm = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+                // FIXED: Used top-1/2 and -translate-y-1/2 for perfect centering
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>

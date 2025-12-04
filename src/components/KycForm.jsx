@@ -83,8 +83,8 @@ export default function KycForm({ user }) {
           Identity Verification
         </h2>
         <p className="text-sm text-gray-500">
-          Please upload valid government-issued documents to verify your host
-          account.
+          Please upload your Aadhar card to verify your host account. Additional
+          documents can be added to speed up the process.
         </p>
       </div>
 
@@ -95,10 +95,10 @@ export default function KycForm({ user }) {
       )}
 
       <form action={handleSubmit} className="space-y-6">
-        {/* Aadhar Upload */}
+        {/* Aadhar Upload - COMPULSORY */}
         <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors bg-gray-50">
           <label className="block text-sm font-bold text-gray-900 mb-2">
-            1. Aadhar Card
+            1. Aadhar Card <span className="text-red-500">*</span>
           </label>
           <p className="text-xs text-gray-500 mb-4">
             Upload a clear photo of your Aadhar card (Front & Back merged or
@@ -113,10 +113,11 @@ export default function KycForm({ user }) {
           />
         </div>
 
-        {/* Other Proof Upload */}
-        <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors bg-gray-50">
+        {/* Other Proof Upload - OPTIONAL */}
+        <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-colors bg-white">
           <label className="block text-sm font-bold text-gray-900 mb-2">
-            2. Additional Proof
+            2. Additional Proof{" "}
+            <span className="text-gray-400 font-normal">(Optional)</span>
           </label>
           <p className="text-xs text-gray-500 mb-4">
             PAN Card, Driving License, or Electricity Bill.
@@ -125,8 +126,8 @@ export default function KycForm({ user }) {
             type="file"
             name="other"
             accept="image/*,.pdf"
-            required
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-900 file:text-white hover:file:bg-gray-700 cursor-pointer"
+            // REMOVED "required" attribute here
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer"
           />
         </div>
 
@@ -139,7 +140,7 @@ export default function KycForm({ user }) {
             {isPending && (
               <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             )}
-            {isPending ? "Uploading Documents..." : "Submit for Verification"}
+            {isPending ? "Uploading..." : "Submit for Verification"}
           </button>
         </div>
       </form>

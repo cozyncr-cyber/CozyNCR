@@ -86,9 +86,9 @@ export async function createListing(formData) {
       latitude: parseFloat(formData.get("latitude") || 0),
       longitude: parseFloat(formData.get("longitude") || 0),
 
-      // Guest Counts
-      maxGuests: parseInt(formData.get("maxGuests")), // Adults
-      maxChildren: parseInt(formData.get("maxChildren") || 0),
+      // Guest Counts (Merged Adults & Children)
+      maxGuests: parseInt(formData.get("maxGuests")),
+      allowChildren: formData.get("allowChildren") === "true", // New Boolean
       maxInfants: parseInt(formData.get("maxInfants") || 0),
       maxPets: parseInt(formData.get("maxPets") || 0),
 
@@ -107,9 +107,7 @@ export async function createListing(formData) {
       bufferTime: parseInt(formData.get("bufferTime") || 0),
       weekendMultiplier: parseInt(formData.get("weekendMultiplier") || 0),
 
-      price_1h: formData.get("price_1h")
-        ? parseInt(formData.get("price_1h"))
-        : null,
+      // Removed price_1h
       price_3h: formData.get("price_3h")
         ? parseInt(formData.get("price_3h"))
         : null,
@@ -189,9 +187,9 @@ export async function updateListing(formData) {
       latitude: parseFloat(formData.get("latitude") || 0),
       longitude: parseFloat(formData.get("longitude") || 0),
 
-      // Guest Counts
+      // Guest Counts (Merged)
       maxGuests: parseInt(formData.get("maxGuests")),
-      maxChildren: parseInt(formData.get("maxChildren") || 0),
+      allowChildren: formData.get("allowChildren") === "true", // New Boolean
       maxInfants: parseInt(formData.get("maxInfants") || 0),
       maxPets: parseInt(formData.get("maxPets") || 0),
 
@@ -210,9 +208,6 @@ export async function updateListing(formData) {
       bufferTime: parseInt(formData.get("bufferTime") || 0),
       weekendMultiplier: parseInt(formData.get("weekendMultiplier") || 0),
 
-      price_1h: formData.get("price_1h")
-        ? parseInt(formData.get("price_1h"))
-        : null,
       price_3h: formData.get("price_3h")
         ? parseInt(formData.get("price_3h"))
         : null,

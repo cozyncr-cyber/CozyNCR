@@ -15,6 +15,7 @@ import {
   Dog,
   Sparkles,
   Clock,
+  Check,
 } from "lucide-react";
 
 // Prevent static generation error
@@ -184,16 +185,17 @@ export default async function PropertyDetailPage({ params }) {
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
               What this place offers
             </h2>
-            <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6">
               {listing.amenities.map((amenity) => (
                 <div
                   key={amenity}
-                  className="flex items-center gap-4 text-gray-700 group"
+                  className="flex items-center gap-3 text-gray-700 group"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-black group-hover:text-white transition-colors duration-300">
-                    <CheckCircle className="w-5 h-5" />
+                  {/* Small Check icon */}
+                  <div className="p-1 rounded-full bg-stone-100 text-stone-600">
+                    <Check size={14} strokeWidth={3} />
                   </div>
-                  <span className="capitalize font-medium text-lg">
+                  <span className="capitalize font-medium text-[15px] border-b border-transparent group-hover:border-gray-300 transition-colors">
                     {amenity}
                   </span>
                 </div>
