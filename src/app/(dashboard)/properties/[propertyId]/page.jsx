@@ -1,7 +1,4 @@
-import { getListingById } from "@/actions/listings";
-import { getUserProfile } from "@/actions/auth";
-import Link from "next/link";
-import Image from "next/image";
+import React from "react";
 import {
   MapPin,
   Users,
@@ -16,33 +13,14 @@ import {
   Sparkles,
   Clock,
   Check,
+  XCircle,
 } from "lucide-react";
-
-// Prevent static generation error
-export const dynamic = "force-dynamic";
+import { getListingById } from "@/actions/listings";
 
 export default async function PropertyDetailPage({ params }) {
   const listing = await getListingById(params.propertyId);
+  if (!listing) return <div>Not Found</div>;
 
-  if (!listing) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Listing not found
-          </h2>
-          <Link
-            href="/properties"
-            className="text-rose-600 hover:underline mt-2 inline-block"
-          >
-            Return to properties
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Helper for images
   const getImageUrl = (fileId) => {
     return `https://cloud.appwrite.io/v1/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
   };
@@ -51,10 +29,10 @@ export default async function PropertyDetailPage({ params }) {
   const addOns = listing.addOns ? JSON.parse(listing.addOns) : [];
 
   return (
-    <div className="max-w-7xl mx-auto pb-20 px-4 sm:px-6">
+    <div className="max-w-7xl mx-auto pb-20 px-4 sm:px-6 bg-white min-h-screen">
       {/* Top Navigation */}
       <div className="flex items-center justify-between py-6">
-        <Link
+        <a
           href="/properties"
           className="group flex items-center text-sm font-medium text-gray-500 hover:text-black transition-colors"
         >
@@ -62,13 +40,13 @@ export default async function PropertyDetailPage({ params }) {
             <ChevronLeft className="w-4 h-4" />
           </div>
           Back to Listings
-        </Link>
-        <Link
+        </a>
+        <a
           href={`/properties/${listing.$id}/edit`}
           className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
         >
           <Edit2 className="w-4 h-4" /> Edit Listing
-        </Link>
+        </a>
       </div>
 
       {/* Hero Header */}
@@ -97,10 +75,9 @@ export default async function PropertyDetailPage({ params }) {
         <div className="md:col-span-2 h-full bg-gray-100 relative group cursor-pointer">
           {images[0] ? (
             <>
-              <Image
+              <img
                 src={getImageUrl(images[0])}
-                fill
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 alt="Main"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" />
@@ -120,10 +97,9 @@ export default async function PropertyDetailPage({ params }) {
             >
               {images[idx] ? (
                 <>
-                  <Image
+                  <img
                     src={getImageUrl(images[idx])}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     alt={`Gallery ${idx}`}
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" />
@@ -152,31 +128,73 @@ export default async function PropertyDetailPage({ params }) {
             </div>
           </div>
 
-          {/* Capacity */}
+          {/* Capacity & Rules */}
           <div className="pb-10 border-b border-gray-100">
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
               Who can stay
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Card 1: Total Guests (Merged) */}
               <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
                 <Users className="w-6 h-6 text-gray-400 mb-2" />
                 <span className="block text-2xl font-bold text-gray-900">
                   {listing.maxGuests}
                 </span>
                 <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
-                  Adults
+                  Guests
                 </span>
               </div>
+
+              {/* Card 2: Children Policy */}
               <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
-                <Baby className="w-6 h-6 text-gray-400 mb-2" />
-                <span className="block text-2xl font-bold text-gray-900">
-                  {listing.maxChildren || 0}
-                </span>
-                <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
-                  Children
-                </span>
+                {listing.allowChildren ? (
+                  <>
+                    <CheckCircle className="w-6 h-6 text-green-500 mb-2" />
+                    <span className="block text-sm font-bold text-gray-900 mt-1">
+                      Allowed
+                    </span>
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
+                      Children
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-6 h-6 text-rose-500 mb-2" />
+                    <span className="block text-sm font-bold text-gray-900 mt-1">
+                      No
+                    </span>
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
+                      Children
+                    </span>
+                  </>
+                )}
               </div>
-              {/* Add infants and pets here similarly */}
+
+              {/* Card 3: Infants (Conditional - ONLY if children are allowed AND maxInfants > 0) */}
+              {listing.allowChildren && listing.maxInfants > 0 && (
+                <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
+                  <Baby className="w-6 h-6 text-gray-400 mb-2" />
+                  <span className="block text-2xl font-bold text-gray-900">
+                    {listing.maxInfants}
+                  </span>
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
+                    Infants
+                  </span>
+                </div>
+              )}
+
+              {/* Card 4: Pets (Conditional) */}
+              {listing.maxPets > 0 && (
+                <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
+                  <Dog className="w-6 h-6 text-gray-400 mb-2" />
+                  <span className="block text-2xl font-bold text-gray-900">
+                    {listing.maxPets}
+                  </span>
+                  <span className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
+                    Pets
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -191,7 +209,6 @@ export default async function PropertyDetailPage({ params }) {
                   key={amenity}
                   className="flex items-center gap-3 text-gray-700 group"
                 >
-                  {/* Small Check icon */}
                   <div className="p-1 rounded-full bg-stone-100 text-stone-600">
                     <Check size={14} strokeWidth={3} />
                   </div>
@@ -272,7 +289,8 @@ export default async function PropertyDetailPage({ params }) {
 
               <div className="p-6 space-y-5">
                 <div className="space-y-3">
-                  {["1h", "3h", "6h", "12h", "24h"].map((dur) => {
+                  {/* Pricing Rows */}
+                  {["3h", "6h", "12h", "24h"].map((dur) => {
                     const price = listing[`price_${dur}`];
                     if (!price) return null;
                     return (
@@ -285,7 +303,7 @@ export default async function PropertyDetailPage({ params }) {
                             {dur.replace("h", "")}
                           </div>
                           <span className="text-gray-600 font-medium text-sm">
-                            {dur === "1h" ? "Hour" : "Hours"}
+                            Hours
                           </span>
                         </div>
                         <span className="font-bold text-gray-900 text-lg">

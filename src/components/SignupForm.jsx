@@ -120,7 +120,7 @@ const SignupForm = () => {
 
       if (result.success) {
         router.refresh();
-        router.push("/");
+        router.push("/dashboard");
       } else {
         setErrors((prev) => ({ ...prev, backend: result.error }));
       }

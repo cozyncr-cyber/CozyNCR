@@ -16,7 +16,7 @@ export default async function DashboardLayout({ children }) {
       <Navbar user={user} />
 
       {/* 2. Layout Container (starts after navbar) */}
-      <div className="pt-16 flex h-screen overflow-hidden">
+      <div className="pt-16 flex min-h-screen overflow-hidden">
         {/* Sidebar (Fixed Left, Hidden on Mobile) */}
         <div className="hidden md:block w-64 flex-shrink-0 h-full overflow-y-auto">
           <Sidebar user={user} />

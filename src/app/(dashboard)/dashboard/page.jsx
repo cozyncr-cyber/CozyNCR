@@ -213,10 +213,11 @@ export default async function DashboardPage() {
                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                        Per Hour
+                        3 Hours {/* UPDATED LABEL */}
                       </span>
                       <span className="font-semibold text-gray-900">
-                        {property.price_1h ? `₹${property.price_1h}` : "-"}
+                        {/* UPDATED FIELD: price_3h instead of price_1h */}
+                        {property.price_3h ? `₹${property.price_3h}` : "-"}
                       </span>
                     </div>
                     <div className="flex flex-col text-right">

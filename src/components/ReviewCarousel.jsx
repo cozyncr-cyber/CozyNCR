@@ -10,7 +10,7 @@ const reviews = [
     location: "South Delhi",
     rating: 5,
     text: "The villa was absolutely stunning. The host was incredibly responsive, and the amenities were exactly as described. Perfect weekend getaway for our family.",
-    date: "October 2024",
+    date: "December 2025",
   },
   {
     id: 2,
@@ -18,7 +18,7 @@ const reviews = [
     location: "Gurgaon",
     rating: 5,
     text: "I've used many rental platforms, but the transparency here is unmatched. I loved the pre-booking chat feature—it made me feel so much more secure.",
-    date: "November 2024",
+    date: "December 2025",
   },
   {
     id: 3,
@@ -26,7 +26,7 @@ const reviews = [
     location: "Noida",
     rating: 4,
     text: "Seamless check-in and the property was spotless. The liability protection gave me peace of mind. Highly recommend for short stays in NCR.",
-    date: "September 2024",
+    date: "December 2025",
   },
 ];
 
@@ -37,14 +37,13 @@ const ReviewCarousel = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrent((prev) => (prev === reviews.length - 1 ? 0 : prev + 1));
-    }, 10000); // 10000ms = 10 seconds
+    }, 10000);
 
-    return () => clearInterval(timer); // Cleanup on unmount
+    return () => clearInterval(timer);
   }, []);
 
   return (
     <div className="w-full h-full flex flex-col justify-center bg-slate-100 text-black rounded-2xl p-8 relative overflow-hidden">
-      {/* Background Decoration (Optional) */}
       <Quote className="absolute top-6 right-6 w-8 h-8 text-slate-800/10 rotate-180" />
 
       {/* Carousel Container */}

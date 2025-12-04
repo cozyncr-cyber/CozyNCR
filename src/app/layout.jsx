@@ -22,7 +22,7 @@ export default async function RootLayout({ children }) {
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         <Navbar user={user} />
-        <section className="mt-20 min-h-[90vh]">{children}</section>i
+        <section className="mt-20 min-h-[90vh]">{children}</section>
         <Footer />
       </body>
     </html>

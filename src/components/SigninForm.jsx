@@ -29,7 +29,7 @@ const SigninForm = () => {
         setError(result.error);
       } else {
         router.refresh();
-        router.push("/");
+        router.push("/dashboard");
       }
     } catch (err) {
       setError("An unexpected error occurred.");

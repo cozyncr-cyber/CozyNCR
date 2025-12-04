@@ -80,7 +80,6 @@ const AMENITIES = [
 ];
 
 const DURATIONS = [
-  { id: "1h", label: "1 Hour" },
   { id: "3h", label: "3 Hours" },
   { id: "6h", label: "6 Hours" },
   { id: "12h", label: "12 Hours" },
@@ -514,13 +513,16 @@ export default function CreateListingForm({ initialData = null }) {
                   <input
                     type="checkbox"
                     className="sr-only peer"
-                    checked={formData.allowChildren !== false} // Defaults to true if undefined
-                    onChange={(e) =>
+                    checked={formData.allowChildren !== false}
+                    onChange={(e) => {
+                      const isAllowed = e.target.checked;
                       setFormData({
                         ...formData,
-                        allowChildren: e.target.checked,
-                      })
-                    }
+                        allowChildren: isAllowed,
+                        // LOGIC CHANGE: If children not allowed, reset infants to 0
+                        maxInfants: isAllowed ? formData.maxInfants : 0,
+                      });
+                    }}
                   />
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
                 </label>
@@ -530,6 +532,8 @@ export default function CreateListingForm({ initialData = null }) {
                 label="Infants"
                 subtitle="Under 2"
                 value={formData.maxInfants}
+                // Disable infant counter if children are not allowed
+                disabled={formData.allowChildren === false}
                 onChange={(v) => setFormData({ ...formData, maxInfants: v })}
               />
               <Counter
@@ -544,7 +548,7 @@ export default function CreateListingForm({ initialData = null }) {
       case 2:
         return (
           <div className="space-y-6 animate-in fade-in">
-            {/* Location Fields (Same as before) */}
+            {/* Location Fields */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Street Address
@@ -621,7 +625,7 @@ export default function CreateListingForm({ initialData = null }) {
                   </span>
                 ) : (
                   <span className="text-sm text-gray-400">
-                    Map Preview Placeholder
+                    Your coordinates (We use this for accurate navigation)
                   </span>
                 )}
               </div>
@@ -634,6 +638,9 @@ export default function CreateListingForm({ initialData = null }) {
       case 3:
         return (
           <div className="space-y-8 animate-in fade-in">
+            <label className="text-center text-sm font-medium block mb-3 text-slate-600">
+              We charge 10%, 90% goes to you
+            </label>
             {/* Durations */}
             <div>
               <label className="text-sm font-medium block mb-3">
@@ -943,7 +950,7 @@ export default function CreateListingForm({ initialData = null }) {
   return (
     <div className="max-w-3xl mx-auto pb-12">
       <div className="mb-8">
-        <div className="flex justify-between mb-2">
+        <div className="flex justify-between mb-2 px-4">
           {STEPS.map((s) => (
             <div
               key={s.id}
@@ -953,7 +960,7 @@ export default function CreateListingForm({ initialData = null }) {
             />
           ))}
         </div>
-        <h2 className="text-2xl font-bold mt-4">
+        <h2 className="text-2xl font-bold mt-4 px-4">
           {STEPS[currentStep - 1].label}
         </h2>
       </div>

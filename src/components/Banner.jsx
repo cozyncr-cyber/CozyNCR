@@ -74,28 +74,9 @@ const Banner = () => {
                 href="/signin"
                 className="inline-flex items-center justify-center px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-sm hover:bg-black transition-all shadow-lg hover:shadow-xl group"
               >
-                Start Hosting Now
+                Go to Dashboard
                 <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-900 border border-gray-200 rounded-full font-bold text-sm hover:bg-gray-50 transition-all">
-                Learn More
-              </button>
-            </div>
-
-            <div className="flex items-center gap-4 pt-8 text-sm text-gray-500">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="w-8 h-8 rounded-full border-2 border-white bg-gray-200"
-                  />
-                ))}
-              </div>
-              <p>
-                Trusted by{" "}
-                <span className="font-bold text-gray-900">500+ Hosts</span> in
-                NCR
-              </p>
             </div>
           </div>
 

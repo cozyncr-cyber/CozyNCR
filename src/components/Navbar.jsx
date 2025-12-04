@@ -66,7 +66,7 @@ export default function Navbar({ user }) {
                 href="/signin"
                 className="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
               >
-                Start Hosting <ArrowRight size={16} />
+                Go to Dashboard <ArrowRight size={16} />
               </Link>
             )}
           </div>
