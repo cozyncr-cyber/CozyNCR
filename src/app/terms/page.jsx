@@ -47,9 +47,10 @@ export default function TermsPage() {
           {/* Intro */}
           <div className="bg-gray-50 p-6 rounded-2xl text-sm border border-gray-100">
             <p className="font-medium text-gray-900 mb-0">
-              Welcome to Cozy NCR ("App", "We", "Us"). By using our platform,
-              services, website, or mobile app, you ("User", "Guest", "Host")
-              agree to the following Terms & Conditions.
+              Welcome to Cozy NCR (&quot;App&quot;, &quot;We&quot;,
+              &quot;Us&quot;). By using our platform, services, website, or
+              mobile app, you (&quot;User&quot;, &quot;Guest&quot;,
+              &quot;Host&quot;) agree to the following Terms & Conditions.
             </p>
           </div>
 
