@@ -71,7 +71,7 @@ const Banner = () => {
 
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link
-                href="/signin"
+                href="/dashboard"
                 className="inline-flex items-center justify-center px-8 py-4 bg-gray-900 text-white rounded-full font-bold text-sm hover:bg-black transition-all shadow-lg hover:shadow-xl group"
               >
                 Go to Dashboard
