@@ -1,13 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import React, { useState } from "react";
 import { LogOut, Menu, X, Home, User, ArrowRight } from "lucide-react";
-import { logout } from "@/actions/auth";
-import Image from "next/image";
+import { logout } from "@/actions/auth"; // Uncomment in real app
+import Link from "next/link"; // Uncomment in real app
+import Image from "next/image"; // Uncomment in real app
 
 export default function Navbar({ user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Helper to close the mobile menu
+  const closeMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -41,10 +46,10 @@ export default function Navbar({ user }) {
                 {/* Authenticated State */}
                 <Link
                   href="/dashboard"
-                  className="hidden md:flex items-center justify-center p-2  transition-all"
+                  className="hidden md:flex items-center justify-center p-2 transition-all"
                   title="Go to Dashboard"
                 >
-                  <div className="rounded-fullflex items-center justify-center">
+                  <div className="rounded-full flex items-center justify-center">
                     <button className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-50 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-200">
                       <User size={16} />
                       <span>Dashboard</span>
@@ -89,25 +94,31 @@ export default function Navbar({ user }) {
               </div>
               <Link
                 href="/dashboard"
+                onClick={closeMenu} // Close menu on click
                 className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
               >
                 Dashboard
               </Link>
               <Link
                 href="/properties"
+                onClick={closeMenu} // Close menu on click
                 className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
               >
                 My Listings
               </Link>
               <Link
                 href="/profile"
+                onClick={closeMenu} // Close menu on click
                 className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
               >
                 Profile
               </Link>
               <div className="border-t border-gray-100 my-2 pt-2">
                 <button
-                  onClick={() => logout()}
+                  onClick={() => {
+                    logout();
+                    closeMenu();
+                  }}
                   className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
                 >
                   <LogOut size={16} /> Sign out
@@ -118,6 +129,7 @@ export default function Navbar({ user }) {
             <div className="p-2">
               <Link
                 href="/signin"
+                onClick={closeMenu} // Close menu on click
                 className="block w-full text-center px-4 py-3 bg-black text-white rounded-xl font-bold"
               >
                 Sign In / Sign Up
