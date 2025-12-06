@@ -1,9 +1,97 @@
 "use server";
-
-import { ID } from "node-appwrite";
+import { ID, Query, Client, Account, Databases } from "node-appwrite";
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+
+export async function sendEmailOtp(email) {
+  try {
+    const { account, users } = await createAdminClient();
+
+    // Check if user already exists
+    try {
+      const existingUsers = await users.list([Query.equal("email", email)]);
+      if (existingUsers.total > 0) {
+        return { error: "An account with this email already exists." };
+      }
+    } catch (err) {
+      console.log(
+        "User check skipped (permissions issue or first run):",
+        err.message
+      );
+    }
+
+    // Generate ID and Send
+    const userId = ID.unique();
+    await account.createEmailToken(userId, email);
+
+    return { success: true, userId };
+  } catch (error) {
+    console.error("Send OTP Error:", error);
+    return { error: error.message || "Failed to send OTP" };
+  }
+}
+
+export async function verifyEmailOtp(userId, secret) {
+  try {
+    const { account } = await createAdminClient();
+
+    // Create the session
+    const session = await account.createSession(userId, secret);
+
+    return { success: true, sessionSecret: session.secret };
+  } catch (error) {
+    console.error("Verify OTP Error:", error);
+    return { error: "Invalid code. Please check your email and try again." };
+  }
+}
+
+export async function completeSignup(formData, sessionSecret) {
+  const { name, password, phone, dob, location } = formData;
+
+  try {
+    const client = new Client()
+      .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
+      .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
+      .setSession(sessionSecret);
+
+    const account = new Account(client);
+    const databases = new Databases(client);
+
+    const user = await account.get();
+
+    await account.updatePassword(password);
+    await account.updateName(name);
+
+    await databases.createDocument(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID,
+      user.$id,
+      {
+        name,
+        email: user.email,
+        phone,
+        dob,
+        location,
+        role: "guest",
+        kycStatus: "unverified",
+      }
+    );
+
+    cookies().set("appwrite-session", sessionSecret, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Complete Signup Error:", error);
+    return { error: error.message || "Failed to complete registration." };
+  }
+}
 
 export async function signupWithAppwrite(formData) {
   const { name, email, password, phone, dob, location } = formData;
@@ -102,19 +190,14 @@ export async function signinWithAppwrite(formData) {
 export async function logout() {
   try {
     const { account } = await createSessionClient();
-
-    // Delete the session from Appwrite
     await account.deleteSession("current");
-
-    // Delete the cookie from the browser
-    cookies().delete("appwrite-session");
   } catch (error) {
-    console.error("Logout failed", error);
-    // Force delete cookie even if Appwrite fails
-    cookies().delete("appwrite-session");
+    console.log("Logout: Session was already invalid, clearing cookie anyway.");
   }
 
-  // Redirect to home page after logout
+  // Always delete the cookie
+  cookies().delete("appwrite-session");
+
   redirect("/");
 }
 

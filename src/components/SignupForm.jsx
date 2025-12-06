@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signupWithAppwrite } from "@/actions/auth";
+import { sendEmailOtp, verifyEmailOtp, completeSignup } from "@/actions/auth";
 
 const SignupForm = () => {
   const router = useRouter();
@@ -42,6 +42,10 @@ const SignupForm = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [tempUserId, setTempUserId] = useState(null);
+
+  // NEW: Store the secret here
+  const [sessionSecret, setSessionSecret] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -52,7 +56,6 @@ const SignupForm = () => {
     if (errors[name]) setErrors({ ...errors, [name]: "" });
   };
 
-  // --- Logic Helpers ---
   const isAtLeast18 = (dobString) => {
     if (!dobString) return false;
     const today = new Date();
@@ -72,22 +75,40 @@ const SignupForm = () => {
       setErrors({ ...errors, email: "Enter a valid email first." });
       return;
     }
+    setErrors((prev) => ({ ...prev, email: "", otp: "" }));
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulating API
+
+    const result = await sendEmailOtp(formData.email);
     setIsLoading(false);
-    setOtpSent(true);
+
+    if (result.success) {
+      setOtpSent(true);
+      setTempUserId(result.userId);
+    } else {
+      setErrors((prev) => ({ ...prev, email: result.error }));
+    }
   };
 
   const handleVerifyOtp = async () => {
-    setIsVerifyingOtp(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    if (formData.otp === "1234") {
-      setOtpVerified(true);
-      setErrors({ ...errors, otp: "" });
-    } else {
-      setErrors({ ...errors, otp: 'Invalid OTP. Use "1234"' });
+    if (!formData.otp || formData.otp.length < 4) {
+      setErrors({ ...errors, otp: "Enter the code from your email" });
+      return;
     }
+
+    setIsVerifyingOtp(true);
+    setErrors((prev) => ({ ...prev, otp: "" }));
+
+    const result = await verifyEmailOtp(tempUserId, formData.otp);
     setIsVerifyingOtp(false);
+
+    if (result.success) {
+      setOtpVerified(true);
+      setErrors((prev) => ({ ...prev, otp: "" }));
+      // NEW: Store the secret, but don't redirect yet
+      setSessionSecret(result.sessionSecret);
+    } else {
+      setErrors((prev) => ({ ...prev, otp: result.error }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -115,7 +136,10 @@ const SignupForm = () => {
 
     if (Object.keys(newErrors).length === 0) {
       setIsLoading(true);
-      const result = await signupWithAppwrite(formData);
+
+      // NEW: Pass the secret to the final function
+      const result = await completeSignup(formData, sessionSecret);
+
       setIsLoading(false);
 
       if (result.success) {
@@ -138,7 +162,6 @@ const SignupForm = () => {
         </p>
       </div>
 
-      {/* Backend Error Alert */}
       {errors.backend && (
         <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 text-sm font-medium">
           <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -180,7 +203,7 @@ const SignupForm = () => {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                disabled={otpVerified}
+                disabled={otpVerified || otpSent}
                 placeholder="host@example.com"
                 className={`w-full pl-12 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-black outline-none transition-all font-medium ${
                   otpVerified
@@ -189,7 +212,6 @@ const SignupForm = () => {
                 }`}
               />
               {otpVerified && (
-                // FIXED ALIGNMENT
                 <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600" />
               )}
             </div>
@@ -200,10 +222,10 @@ const SignupForm = () => {
                 disabled={isLoading || otpSent}
                 className="px-5 bg-black text-white text-sm font-bold rounded-xl hover:bg-gray-800 disabled:opacity-50 transition-colors whitespace-nowrap"
               >
-                {isLoading ? (
+                {isLoading && !otpSent ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : otpSent ? (
-                  "Resend"
+                  "Sent"
                 ) : (
                   "Verify"
                 )}
@@ -221,8 +243,8 @@ const SignupForm = () => {
                 name="otp"
                 value={formData.otp}
                 onChange={handleChange}
-                maxLength={4}
-                placeholder="1234"
+                maxLength={6}
+                placeholder="123456"
                 className="w-full text-center tracking-widest font-mono text-lg py-2 bg-white border-2 border-black rounded-xl focus:outline-none"
               />
               <button
@@ -318,13 +340,11 @@ const SignupForm = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••"
-                // Added pr-10 so text doesn't go under icon
                 className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                // FIXED ALIGNMENT
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
               >
                 {showPassword ? (
@@ -352,10 +372,8 @@ const SignupForm = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••"
-                // Added pr-10 so text doesn't go under icon
                 className="w-full pl-4 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-black outline-none transition-all font-medium"
               />
-              {/* Added missing toggle button for Confirm Password */}
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
