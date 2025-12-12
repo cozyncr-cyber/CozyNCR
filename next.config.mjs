@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "cloud.appwrite.io", // General Appwrite Cloud
+        hostname: "cloud.appwrite.io",
         port: "",
       },
       {
@@ -14,7 +19,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "images.unsplash.com", // You used Unsplash in your mock data earlier
+        hostname: "images.unsplash.com",
         port: "",
       },
     ],

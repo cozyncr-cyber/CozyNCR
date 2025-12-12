@@ -1,7 +1,6 @@
 // update_schema.js
 const sdk = require("node-appwrite");
 
-// HARDCODE THESE FOR THE SCRIPT OR USE DOTENV
 const client = new sdk.Client()
   .setEndpoint(
     process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1"

@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { LogOut, Menu, X, Home, User, ArrowRight } from "lucide-react";
-import { logout } from "@/actions/auth"; // Uncomment in real app
-import Link from "next/link"; // Uncomment in real app
-import Image from "next/image"; // Uncomment in real app
+import { logout } from "@/actions/auth";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function Navbar({ user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
