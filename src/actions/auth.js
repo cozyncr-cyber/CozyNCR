@@ -4,27 +4,20 @@ import { createAdminClient, createSessionClient } from "@/lib/appwrite";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+// ... [Existing Send OTP logic] ...
 export async function sendEmailOtp(email) {
   try {
     const { account, users } = await createAdminClient();
-
-    // Check if user already exists
     try {
       const existingUsers = await users.list([Query.equal("email", email)]);
       if (existingUsers.total > 0) {
         return { error: "An account with this email already exists." };
       }
     } catch (err) {
-      console.log(
-        "User check skipped (permissions issue or first run):",
-        err.message
-      );
+      console.log("User check skipped:", err.message);
     }
-
-    // Generate ID and Send
     const userId = ID.unique();
     await account.createEmailToken(userId, email);
-
     return { success: true, userId };
   } catch (error) {
     console.error("Send OTP Error:", error);
@@ -32,13 +25,11 @@ export async function sendEmailOtp(email) {
   }
 }
 
+// ... [Existing Verify OTP logic] ...
 export async function verifyEmailOtp(userId, secret) {
   try {
     const { account } = await createAdminClient();
-
-    // Create the session
     const session = await account.createSession(userId, secret);
-
     return { success: true, sessionSecret: session.secret };
   } catch (error) {
     console.error("Verify OTP Error:", error);
@@ -46,9 +37,9 @@ export async function verifyEmailOtp(userId, secret) {
   }
 }
 
+// ... [Existing Complete Signup logic] ...
 export async function completeSignup(formData, sessionSecret) {
   const { name, password, phone, dob, location } = formData;
-
   try {
     const client = new Client()
       .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
@@ -57,7 +48,6 @@ export async function completeSignup(formData, sessionSecret) {
 
     const account = new Account(client);
     const databases = new Databases(client);
-
     const user = await account.get();
 
     await account.updatePassword(password);
@@ -93,21 +83,14 @@ export async function completeSignup(formData, sessionSecret) {
   }
 }
 
+// ... [Existing Signup logic] ...
 export async function signupWithAppwrite(formData) {
   const { name, email, password, phone, dob, location } = formData;
-
   try {
     const { account, databases } = await createAdminClient();
-
-    // 1. Create the Auth Account
     const userId = ID.unique();
     await account.create(userId, email, password, name);
-
-    // 2. Create the Session immediately
     const session = await account.createEmailPasswordSession(email, password);
-
-    // 3. Set the Cookie
-    // FIX: "secure" must be false on localhost (dev), or login will fail.
     cookies().set("appwrite-session", session.secret, {
       path: "/",
       httpOnly: true,
@@ -115,8 +98,6 @@ export async function signupWithAppwrite(formData) {
       secure: process.env.NODE_ENV === "production",
       expires: new Date(session.expire),
     });
-
-    // 4. Create the User Document in Database
     try {
       await databases.createDocument(
         process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
@@ -134,59 +115,41 @@ export async function signupWithAppwrite(formData) {
       );
     } catch (dbError) {
       console.error("DB Creation failed:", dbError);
-
-      // OPTIONAL: Rollback
-      // If DB fails, you technically have a "zombie" user (Auth exists, but no DB Profile).
-      // You might want to manually delete the account here if your Appwrite setup allows it.
-      // await account.deleteIdentity(userId);
-
       throw new Error("Failed to create user profile. Please try again.");
     }
-
     return { success: true };
   } catch (error) {
     console.error("Signup Action Error:", error);
-
     let message = error.message || "An unexpected error occurred.";
     if (error.code === 409) {
-      if (message.includes("email"))
-        message = "This email is already registered.";
-      else if (message.includes("phone"))
-        message = "This phone number is already registered.";
+      if (message.includes("email")) message = "This email is already registered.";
+      else if (message.includes("phone")) message = "This phone number is already registered.";
       else message = "User already exists.";
     }
-
     return { error: message };
   }
 }
 
+// ... [Existing Signin logic] ...
 export async function signinWithAppwrite(formData) {
   const { email, password } = formData;
-
   try {
-    // Init Admin Client
     const { account } = await createAdminClient();
-
-    // Create Session
     const session = await account.createEmailPasswordSession(email, password);
-
-    // Set Cookie securely
     cookies().set("appwrite-session", session.secret, {
       path: "/",
       httpOnly: true,
       sameSite: "strict",
-      // FIX: Only use secure cookies in production
       secure: process.env.NODE_ENV === "production",
       expires: new Date(session.expire),
     });
-
     return { success: true };
   } catch (error) {
-    // Return the specific error message from Appwrite if available
     return { error: error.message || "Invalid email or password" };
   }
 }
 
+// ... [Existing Logout logic] ...
 export async function logout() {
   try {
     const { account } = await createSessionClient();
@@ -194,13 +157,11 @@ export async function logout() {
   } catch (error) {
     console.log("Logout: Session was already invalid, clearing cookie anyway.");
   }
-
-  // Always delete the cookie
   cookies().delete("appwrite-session");
-
   redirect("/");
 }
 
+// ... [Existing Get User logic] ...
 export async function getLoggedInUser() {
   try {
     const { account } = await createSessionClient();
@@ -210,16 +171,19 @@ export async function getLoggedInUser() {
   }
 }
 
+// --- FORGOT PASSWORD LOGIC ---
+
+// 1. Send Recovery Email
 export async function sendPasswordRecovery(email) {
   try {
     const { account } = await createAdminClient();
 
-    await account.createRecovery(
-      email,
-      process.env.NEXT_PUBLIC_APP_URL
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`
-        : "http://localhost:3000/reset-password"
-    );
+    // Ensure this URL matches your actual route in Next.js
+    const redirectUrl = process.env.NEXT_PUBLIC_APP_URL
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`
+      : "http://localhost:3000/reset-password";
+
+    await account.createRecovery(email, redirectUrl);
 
     return { success: true };
   } catch (error) {
@@ -228,22 +192,35 @@ export async function sendPasswordRecovery(email) {
   }
 }
 
+// 2. Confirm Reset (New Function)
+export async function confirmPasswordReset(userId, secret, password, confirmPassword) {
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match" };
+  }
+
+  try {
+    const { account } = await createAdminClient();
+    
+    // updateRecovery(userId, secret, password, passwordAgain)
+    await account.updateRecovery(userId, secret, password, confirmPassword);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Reset Confirm Error:", error);
+    return { error: error.message || "Invalid or expired reset link" };
+  }
+}
+
 export async function getUserProfile() {
   try {
     const { account, databases } = await createSessionClient();
-
     const authUser = await account.get();
-
     const userDoc = await databases.getDocument(
       process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
       process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID,
       authUser.$id
     );
-
-    return {
-      ...authUser,
-      ...userDoc,
-    };
+    return { ...authUser, ...userDoc };
   } catch (error) {
     return null;
   }

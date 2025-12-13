@@ -78,9 +78,19 @@ const SigninForm = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-bold text-gray-900 ml-1">
-              Password
-            </label>
+            <div className="flex justify-between items-center ml-1">
+              <label className="block text-sm font-bold text-gray-900">
+                Password
+              </label>
+              {/* --- ADDED FORGOT PASSWORD LINK --- */}
+              <Link 
+                href="/forgot-password" 
+                className="text-sm font-semibold text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+            
             <div className="relative group">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />{" "}
               <input
@@ -95,7 +105,6 @@ const SigninForm = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                // FIXED: Used top-1/2 and -translate-y-1/2 for perfect centering
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
