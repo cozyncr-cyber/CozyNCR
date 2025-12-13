@@ -30,12 +30,14 @@ import { createListing, updateListing } from "@/actions/listings";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { State, City } from "country-state-city";
+// Import the Client SDK helper we created
+import { clientStorage, ID } from "@/lib/appwrite-client";
 
 // --- CONSTANTS ---
 const STEPS = [
   { id: 1, label: "The Basics" },
   { id: 2, label: "Location" },
-  { id: 3, label: "Pricing & Services" }, // Updated label
+  { id: 3, label: "Pricing & Services" },
   { id: 4, label: "Schedule" },
   { id: 5, label: "Amenities" },
   { id: 6, label: "Photos" },
@@ -90,28 +92,33 @@ const getImageUrl = (fileId) => {
   return `https://cloud.appwrite.io/v1/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
 };
 
-const Counter = ({ label, value, onChange, subtitle }) => (
+const Counter = ({ label, value, onChange, subtitle, disabled = false }) => (
   <div className="flex items-center justify-between py-4 border-b last:border-0">
     <div>
-      <div className="font-medium text-gray-900">{label}</div>
+      <div className={`font-medium ${disabled ? "text-gray-400" : "text-gray-900"}`}>{label}</div>
       {subtitle && <div className="text-sm text-gray-500">{subtitle}</div>}
     </div>
     <div className="flex items-center gap-4">
       <button
         type="button"
         onClick={() => onChange(Math.max(0, value - 1))}
-        className={`p-2 rounded-full border border-gray-300 hover:border-black transition-colors ${
-          value === 0 ? "opacity-30 cursor-not-allowed" : ""
+        className={`p-2 rounded-full border border-gray-300 transition-colors ${
+          value === 0 || disabled
+            ? "opacity-30 cursor-not-allowed border-gray-200"
+            : "hover:border-black"
         }`}
-        disabled={value === 0}
+        disabled={value === 0 || disabled}
       >
         <Minus className="w-4 h-4" />
       </button>
-      <span className="w-4 text-center font-medium">{value}</span>
+      <span className={`w-4 text-center font-medium ${disabled ? "text-gray-400" : ""}`}>{value}</span>
       <button
         type="button"
         onClick={() => onChange(value + 1)}
-        className="p-2 rounded-full border border-gray-300 hover:border-black transition-colors"
+        className={`p-2 rounded-full border border-gray-300 transition-colors ${
+          disabled ? "opacity-30 cursor-not-allowed border-gray-200" : "hover:border-black"
+        }`}
+        disabled={disabled}
       >
         <Plus className="w-4 h-4" />
       </button>
@@ -140,7 +147,7 @@ export default function CreateListingForm({ initialData = null }) {
 
     // Guest Counts
     maxGuests: initialData?.maxGuests || 1, // Adults
-    maxChildren: initialData?.maxChildren || 0,
+    allowChildren: initialData?.allowChildren ?? true, // Default true if not set
     maxInfants: initialData?.maxInfants || 0,
     maxPets: initialData?.maxPets || 0,
 
@@ -317,7 +324,9 @@ export default function CreateListingForm({ initialData = null }) {
 
   const removeImage = (index) =>
     setVisualImages((prev) => prev.filter((_, i) => i !== index));
+    
   const onDragStart = (index) => setDraggedItemIndex(index);
+  
   const onDragOver = (e, index) => {
     e.preventDefault();
     if (draggedItemIndex === null || draggedItemIndex === index) return;
@@ -330,6 +339,7 @@ export default function CreateListingForm({ initialData = null }) {
     });
     setDraggedItemIndex(index);
   };
+  
   const onDragEnd = () => setDraggedItemIndex(null);
 
   // --- SUBMISSION ---
@@ -376,11 +386,50 @@ export default function CreateListingForm({ initialData = null }) {
 
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
+  // --- UPDATED HANDLESUBMIT (Client Upload Strategy) ---
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) return;
     setIsSubmitting(true);
 
     try {
+      // 1. Filter out only the NEW images that need uploading
+      const newImagesToUpload = visualImages.filter((img) => img.type === "new");
+
+      // 2. Upload them and create a map: { temp_id: real_appwrite_id }
+      // This happens on the CLIENT, so no server size limits apply
+      const uploadPromises = newImagesToUpload.map(async (img) => {
+        try {
+            const result = await clientStorage.createFile(
+                process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID,
+                ID.unique(),
+                img.file
+            );
+            return { tempId: img.id, realId: result.$id };
+        } catch (uploadError) {
+            console.error("Upload failed for file:", img.file.name, uploadError);
+            throw new Error(`Failed to upload ${img.file.name}. Please try again.`);
+        }
+      });
+
+      const uploadedResults = await Promise.all(uploadPromises);
+
+      // Create a lookup object for easy replacement
+      const uploadMap = {};
+      uploadedResults.forEach((item) => {
+        uploadMap[item.tempId] = item.realId;
+      });
+
+      // 3. Construct the Final Ordered Array of IDs
+      // We iterate through 'visualImages' because that array IS the current visual order
+      const finalOrderedIds = visualImages.map((img) => {
+        if (img.type === "existing") {
+          return img.id; // Keep existing real ID
+        } else {
+          return uploadMap[img.id]; // Swap temp ID for new real ID
+        }
+      }).filter(Boolean); // Safety filter
+
+      // 4. Construct FormData for the Server Action
       const data = new FormData();
       Object.keys(formData).forEach((key) => {
         if (["amenities", "prices", "offeredDurations", "addOns"].includes(key))
@@ -393,23 +442,12 @@ export default function CreateListingForm({ initialData = null }) {
         if (formData.prices[d]) data.append(`price_${d}`, formData.prices[d]);
       });
 
-      // Serialize Add-ons to JSON string
       data.append("addOns", JSON.stringify(formData.addOns));
-
-      const newFiles = [];
-      visualImages.forEach((img) => {
-        if (img.type === "new") {
-          data.append("newImages", img.file);
-          newFiles.push(img);
-        }
-      });
-
-      const finalOrder = visualImages.map((img) => {
-        if (img.type === "existing") return img.id;
-        const newIndex = newFiles.findIndex((nf) => nf.id === img.id);
-        return `new_${newIndex}`;
-      });
-      data.append("finalImageOrder", JSON.stringify(finalOrder));
+      
+      // KEY CHANGE: Send the clean, ordered array of IDs
+      data.append("finalImageIds", JSON.stringify(finalOrderedIds));
+      
+      // We do NOT send "newImages" or "finalImageOrder" anymore
 
       if (isEditMode) {
         data.append("listingId", initialData.$id);
@@ -419,9 +457,11 @@ export default function CreateListingForm({ initialData = null }) {
         const result = await createListing(data);
         if (result.error) throw new Error(result.error);
       }
+      
       router.push("/properties");
     } catch (error) {
-      alert(error.message);
+      console.error(error);
+      alert(error.message || "Something went wrong during submission.");
       setIsSubmitting(false);
     }
   };
@@ -513,13 +553,13 @@ export default function CreateListingForm({ initialData = null }) {
                   <input
                     type="checkbox"
                     className="sr-only peer"
-                    checked={formData.allowChildren !== false}
+                    checked={formData.allowChildren}
                     onChange={(e) => {
                       const isAllowed = e.target.checked;
                       setFormData({
                         ...formData,
                         allowChildren: isAllowed,
-                        // LOGIC CHANGE: If children not allowed, reset infants to 0
+                        // If children not allowed, reset infants to 0
                         maxInfants: isAllowed ? formData.maxInfants : 0,
                       });
                     }}
@@ -533,7 +573,7 @@ export default function CreateListingForm({ initialData = null }) {
                 subtitle="Under 2"
                 value={formData.maxInfants}
                 // Disable infant counter if children are not allowed
-                disabled={formData.allowChildren === false}
+                disabled={!formData.allowChildren}
                 onChange={(v) => setFormData({ ...formData, maxInfants: v })}
               />
               <Counter
