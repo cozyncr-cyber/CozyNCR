@@ -11,12 +11,19 @@ import {
   ShieldCheckIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import { BookAIcon, BookImageIcon, CreditCard } from "lucide-react";
 
 export const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Squares2X2Icon },
   { name: "My Listings", href: "/properties", icon: BuildingStorefrontIcon },
+  { name: "Bookings", href: "/bookings", icon: BookAIcon },
   { name: "Calendar", href: "/calendar", icon: CalendarDaysIcon },
   { name: "Profile", href: "/profile", icon: UserCircleIcon },
+  {
+    name: "Payment Preferences",
+    href: "/payment-preferences",
+    icon: CreditCard,
+  },
 ];
 
 function classNames(...classes) {

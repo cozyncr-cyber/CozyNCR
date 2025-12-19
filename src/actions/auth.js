@@ -122,8 +122,10 @@ export async function signupWithAppwrite(formData) {
     console.error("Signup Action Error:", error);
     let message = error.message || "An unexpected error occurred.";
     if (error.code === 409) {
-      if (message.includes("email")) message = "This email is already registered.";
-      else if (message.includes("phone")) message = "This phone number is already registered.";
+      if (message.includes("email"))
+        message = "This email is already registered.";
+      else if (message.includes("phone"))
+        message = "This phone number is already registered.";
       else message = "User already exists.";
     }
     return { error: message };
@@ -179,8 +181,8 @@ export async function sendPasswordRecovery(email) {
     const { account } = await createAdminClient();
 
     // Ensure this URL matches your actual route in Next.js
-    const redirectUrl = process.env.NEXT_PUBLIC_APP_URL
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/reset-password`
+    const redirectUrl = process.env.NEXT_PUBLIC_BASE_URL
+      ? `${process.env.NEXT_PUBLIC_BASE_URL}/reset-password`
       : "http://localhost:3000/reset-password";
 
     await account.createRecovery(email, redirectUrl);
@@ -193,17 +195,22 @@ export async function sendPasswordRecovery(email) {
 }
 
 // 2. Confirm Reset (New Function)
-export async function confirmPasswordReset(userId, secret, password, confirmPassword) {
+export async function confirmPasswordReset(
+  userId,
+  secret,
+  password,
+  confirmPassword
+) {
   if (password !== confirmPassword) {
     return { error: "Passwords do not match" };
   }
 
   try {
     const { account } = await createAdminClient();
-    
+
     // updateRecovery(userId, secret, password, passwordAgain)
     await account.updateRecovery(userId, secret, password, confirmPassword);
-    
+
     return { success: true };
   } catch (error) {
     console.error("Reset Confirm Error:", error);
