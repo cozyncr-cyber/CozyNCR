@@ -10,9 +10,56 @@ const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
 const USER_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_USER_COLLECTION_ID;
 const LISTINGS_COLLECTION_ID =
   process.env.NEXT_PUBLIC_APPWRITE_PROPERTIES_COLLECTION_ID;
-const KYC_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_KYC_COLLECTION_ID; // New Variable
+const KYC_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_KYC_COLLECTION_ID;
 const BUCKET_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID;
 const PROJECT_ID = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+
+// Assuming you have a bookings collection. If not, set this ENV var or the function will return 0.
+const BOOKINGS_COLLECTION_ID =
+  process.env.NEXT_PUBLIC_APPWRITE_BOOKINGS_COLLECTION_ID;
+
+// --- BOOKING STATS ---
+
+export async function getOwnerBookingCount() {
+  const user = await getLoggedInUser();
+  if (!user) return 0;
+
+  // If no collection ID is defined yet, return 0
+  if (!BOOKINGS_COLLECTION_ID) return 0;
+
+  const { databases } = await createSessionClient();
+  try {
+    // FIX: Since 'ownerId' doesn't exist on bookings, we must:
+    // 1. Get all properties owned by this user
+    const properties = await databases.listDocuments(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      [
+        Query.equal("ownerId", user.$id),
+        Query.select(["$id"]), // Optimization: Only fetch IDs
+        Query.limit(100), // Appwrite limit for 'equal' query values is usually around 100
+      ]
+    );
+
+    if (properties.total === 0) return 0;
+
+    const propertyIds = properties.documents.map((p) => p.$id);
+
+    // 2. Count bookings where listingId is in our list of property IDs
+    const result = await databases.listDocuments(
+      DATABASE_ID,
+      BOOKINGS_COLLECTION_ID,
+      [
+        Query.equal("listingId", propertyIds),
+        Query.limit(1), // We only need the 'total' count metadata
+      ]
+    );
+    return result.total;
+  } catch (error) {
+    console.error("Failed to fetch booking count:", error);
+    return 0;
+  }
+}
 
 // --- KYC ACTIONS ---
 

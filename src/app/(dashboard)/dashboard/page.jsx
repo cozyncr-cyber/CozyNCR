@@ -1,21 +1,26 @@
 import { getUserProfile } from "@/actions/auth";
-import { getUserProperties } from "@/actions/data";
+import { getUserProperties, getOwnerBookingCount } from "@/actions/data";
 import Link from "next/link";
-import Image from "next/image"; // Import Image
+import Image from "next/image";
 import {
   BuildingStorefrontIcon,
   PlusIcon,
   ShieldCheckIcon,
   ExclamationTriangleIcon,
   MapPinIcon,
+  GiftIcon,
 } from "@heroicons/react/24/outline";
 
 // CRITICAL: Prevent static generation for auth-protected pages
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const user = await getUserProfile();
-  const properties = await getUserProperties();
+  // Parallel data fetching for performance
+  const [user, properties, bookingCount] = await Promise.all([
+    getUserProfile(),
+    getUserProperties(),
+    getOwnerBookingCount(),
+  ]);
 
   // Determine status color/icon
   const isVerified = user?.kycStatus === "verified";
@@ -23,6 +28,11 @@ export default async function DashboardPage() {
 
   // Get recent 3 properties
   const recentProperties = properties.slice(0, 3);
+
+  // Achievement Logic
+  const GOAL = 40;
+  const progress = Math.min((bookingCount / GOAL) * 100, 100);
+  const isGoalReached = bookingCount >= GOAL;
 
   return (
     <div className="space-y-8">
@@ -137,7 +147,6 @@ export default async function DashboardPage() {
             </div>
           </div>
           <div className="flex items-baseline gap-2">
-            {/* SAFEGUARD: Added optional chaining here */}
             <h2
               className={`text-3xl font-bold capitalize ${
                 isVerified ? "text-green-600" : "text-gray-900"
@@ -154,6 +163,87 @@ export default async function DashboardPage() {
               View Profile <span aria-hidden="true">&rarr;</span>
             </Link>
           </div>
+        </div>
+
+        {/* Card 3: Achievement / Goa Trip */}
+        <div
+          className={`relative overflow-hidden p-6 rounded-2xl border shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all ${
+            isGoalReached
+              ? "bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-transparent"
+              : "bg-white border-gray-100"
+          }`}
+        >
+          {/* Background decoration for achieved state */}
+          {isGoalReached && (
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
+          )}
+
+          <div className="flex items-center justify-between mb-4">
+            <div
+              className={`p-2 rounded-lg ${
+                isGoalReached
+                  ? "bg-white/20 text-white"
+                  : "bg-indigo-50 text-indigo-600"
+              }`}
+            >
+              <GiftIcon className="h-6 w-6" />
+            </div>
+            {isGoalReached && (
+              <span className="bg-white text-indigo-700 text-xs font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                Unlocked!
+              </span>
+            )}
+          </div>
+
+          <div className="mb-3">
+            <h2
+              className={`text-lg font-bold leading-tight ${
+                isGoalReached ? "text-white" : "text-gray-900"
+              }`}
+            >
+              Free trip to Goa
+            </h2>
+            <p
+              className={`text-sm mt-1 ${
+                isGoalReached ? "text-indigo-100" : "text-gray-500"
+              }`}
+            >
+              {isGoalReached
+                ? "You've hit 40 bookings! Claim your reward now."
+                : `Get ${GOAL} bookings to unlock a free trip.`}
+            </p>
+          </div>
+
+          {isGoalReached ? (
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <a
+                href={`mailto:support@yourdomain.com?subject=Claim Goa Trip Reward&body=Hi, I have reached ${bookingCount} bookings. User ID: ${user?.$id}`}
+                className="block w-full text-center bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm"
+              >
+                Claim Reward
+              </a>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <div className="flex justify-between items-end mb-2">
+                <span className="text-3xl font-bold text-gray-900">
+                  {bookingCount}
+                  <span className="text-lg text-gray-400 font-normal">
+                    /{GOAL}
+                  </span>
+                </span>
+                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">
+                  {Math.round(progress)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div
+                  className="bg-indigo-600 h-2.5 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -185,7 +275,7 @@ export default async function DashboardPage() {
                     <Image
                       src={`https://cloud.appwrite.io/v1/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${property.thumbnail}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`}
                       alt={property.title}
-                      fill // Use fill for responsive
+                      fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
@@ -213,10 +303,9 @@ export default async function DashboardPage() {
                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                        3 Hours {/* UPDATED LABEL */}
+                        3 Hours
                       </span>
                       <span className="font-semibold text-gray-900">
-                        {/* UPDATED FIELD: price_3h instead of price_1h */}
                         {property.price_3h ? `₹${property.price_3h}` : "-"}
                       </span>
                     </div>
