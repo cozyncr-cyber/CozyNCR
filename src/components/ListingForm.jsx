@@ -593,10 +593,7 @@ export default function CreateListingForm({ initialData = null }) {
           <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
           <h3 className="text-red-800 font-bold mb-1">Failed to Load Map</h3>
           <p className="text-red-600 text-sm mb-2">{loadError.message}</p>
-          <p className="text-xs text-red-500 max-w-xs">
-            Check your Google Cloud Console: Enable "Maps JavaScript API" &
-            "Places API", and enable Billing.
-          </p>
+          <p className="text-xs text-red-500 max-w-xs"></p>
         </div>
       );
     }
