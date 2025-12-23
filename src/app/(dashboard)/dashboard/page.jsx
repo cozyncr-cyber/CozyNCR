@@ -217,7 +217,7 @@ export default async function DashboardPage() {
           {isGoalReached ? (
             <div className="mt-4 pt-4 border-t border-white/20">
               <a
-                href={`mailto:support@yourdomain.com?subject=Claim Goa Trip Reward&body=Hi, I have reached ${bookingCount} bookings. User ID: ${user?.$id}`}
+                href={`mailto:ncrcozy@gmail.com?subject=Claim Goa Trip Reward&body=Hi, I have reached ${bookingCount} bookings. User ID: ${user?.$id}`}
                 className="block w-full text-center bg-white text-indigo-700 hover:bg-indigo-50 px-4 py-2 rounded-lg text-sm font-bold transition-colors shadow-sm"
               >
                 Claim Reward

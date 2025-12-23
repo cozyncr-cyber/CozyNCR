@@ -18,6 +18,7 @@
     "lucide-react": "^0.554.0",
     "next": "14.2.33",
     "node-appwrite": "^20.3.0",
+    "olamaps-web-sdk": "^1.1.4",
     "react": "^18",
     "react-dom": "^18"
   },

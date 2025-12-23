@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Home,
   Armchair,
@@ -25,6 +25,8 @@ import {
   Plus,
   GripVertical,
   Trash2,
+  AlertCircle,
+  Search, // Added Search Icon
 } from "lucide-react";
 import { createListing, updateListing } from "@/actions/listings";
 import Image from "next/image";
@@ -32,8 +34,13 @@ import { useRouter } from "next/navigation";
 import { State, City } from "country-state-city";
 import { clientStorage, ID } from "@/lib/appwrite-client";
 
-// --- 1. IMPORT GOOGLE MAPS ---
-import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+// --- 1. IMPORT GOOGLE MAPS & AUTOCOMPLETE ---
+import {
+  GoogleMap,
+  useJsApiLoader,
+  Marker,
+  Autocomplete,
+} from "@react-google-maps/api";
 
 // --- CONSTANTS ---
 const STEPS = [
@@ -45,7 +52,6 @@ const STEPS = [
   { id: 6, label: "Photos" },
 ];
 
-// ... [Keep CATEGORIES, AMENITIES, DURATIONS, getImageUrl, Counter as they were] ...
 const CATEGORIES = [
   {
     id: "apartment",
@@ -156,7 +162,9 @@ const defaultCenter = {
   lng: 77.209,
 };
 
-const libraries = ["places"]; // Static array to prevent re-renders
+// Define libraries outside component to prevent re-renders
+// Crucial: "places" must be here for Autocomplete
+const libraries = ["places"];
 
 export default function CreateListingForm({ initialData = null }) {
   const router = useRouter();
@@ -172,10 +180,12 @@ export default function CreateListingForm({ initialData = null }) {
   const [visualImages, setVisualImages] = useState([]);
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
 
+  // --- MAP REFS ---
+  const [map, setMap] = useState(null);
+  const autocompleteRef = useRef(null);
+
   // --- 2. LOAD GOOGLE MAPS SCRIPT ---
-  // You can leave the key empty string "" for now to test layout,
-  // but the map won't render tiles until you add the key in .env.local
-  const { isLoaded } = useJsApiLoader({
+  const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
@@ -193,7 +203,6 @@ export default function CreateListingForm({ initialData = null }) {
     city: initialData?.city || "",
     state: initialData?.state || "",
     zip: initialData?.zip || "",
-    // Initialize with 0 or initial data
     latitude: initialData?.latitude || 0,
     longitude: initialData?.longitude || 0,
     offeredDurations: initialData
@@ -216,7 +225,7 @@ export default function CreateListingForm({ initialData = null }) {
     amenities: initialData?.amenities || [],
   });
 
-  // [UseEffects for states/cities/initialData - Keep unchanged]
+  // [UseEffects for states/cities/initialData]
   useEffect(() => {
     const statesData = State.getStatesOfCountry(selectedCountry);
     setStates(statesData);
@@ -246,7 +255,6 @@ export default function CreateListingForm({ initialData = null }) {
     }
   }, [formData.state, states]);
 
-  // [Handers - Keep unchanged]
   const handleStateChange = (e) => {
     const stateCode = e.target.value;
     const stateObj = states.find((s) => s.isoCode === stateCode);
@@ -320,7 +328,50 @@ export default function CreateListingForm({ initialData = null }) {
     });
   };
 
-  // --- 3. MAP HANDLERS ---
+  // --- 3. MAP & SEARCH HANDLERS ---
+
+  const onMapLoad = useCallback((map) => {
+    setMap(map);
+  }, []);
+
+  const onUnmount = useCallback(() => {
+    setMap(null);
+  }, []);
+
+  const onAutocompleteLoad = (autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+
+      if (!place.geometry || !place.geometry.location) {
+        // User entered the name of a Place that was not suggested and
+        // pressed the Enter key, or the Place Details request failed.
+        return;
+      }
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+
+      setFormData((prev) => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+        address: place.formatted_address || prev.address, // Auto-fill address if available
+      }));
+
+      // Fly to location
+      if (map) {
+        map.panTo({ lat, lng });
+        map.setZoom(17);
+      }
+
+      if (errors.location) setErrors((prev) => ({ ...prev, location: null }));
+    }
+  };
+
   const onMapClick = useCallback(
     (e) => {
       setFormData((prev) => ({
@@ -349,11 +400,19 @@ export default function CreateListingForm({ initialData = null }) {
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
         setFormData((prev) => ({
           ...prev,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: lat,
+          longitude: lng,
         }));
+
+        if (map) {
+          map.panTo({ lat, lng });
+          map.setZoom(17);
+        }
+
         setIsLocating(false);
         if (errors.location) setErrors((prev) => ({ ...prev, location: null }));
       },
@@ -364,7 +423,7 @@ export default function CreateListingForm({ initialData = null }) {
     );
   };
 
-  // [File Upload/Drag Logic - Keep unchanged]
+  // [File Upload/Drag Logic]
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     const validFiles = files.filter((f) => f.type.startsWith("image/"));
@@ -398,7 +457,7 @@ export default function CreateListingForm({ initialData = null }) {
 
   const onDragEnd = () => setDraggedItemIndex(null);
 
-  // [Validation & Submit - Keep unchanged]
+  // [Validation & Submit]
   const validateStep = (step) => {
     const newErrors = {};
     if (step === 1) {
@@ -411,7 +470,6 @@ export default function CreateListingForm({ initialData = null }) {
       if (!formData.address) newErrors.address = "Address is required";
       if (!formData.city) newErrors.city = "City is required";
       if (!formData.state) newErrors.state = "State is required";
-      // We check latitude specifically for location validation
       if (!formData.latitude) newErrors.location = "Please pin location on map";
     }
     if (step === 3) {
@@ -514,10 +572,102 @@ export default function CreateListingForm({ initialData = null }) {
     }
   };
 
+  // --- RENDER MAP CONTENT ---
+  const renderMapSection = () => {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+      return (
+        <div className="h-[300px] bg-red-50 border border-red-200 rounded-xl flex flex-col items-center justify-center p-6 text-center">
+          <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
+          <h3 className="text-red-800 font-bold mb-1">API Key Missing</h3>
+          <p className="text-red-600 text-sm">
+            Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file
+            and restart the server.
+          </p>
+        </div>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <div className="h-[300px] bg-red-50 border border-red-200 rounded-xl flex flex-col items-center justify-center p-6 text-center">
+          <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
+          <h3 className="text-red-800 font-bold mb-1">Failed to Load Map</h3>
+          <p className="text-red-600 text-sm mb-2">{loadError.message}</p>
+          <p className="text-xs text-red-500 max-w-xs">
+            Check your Google Cloud Console: Enable "Maps JavaScript API" &
+            "Places API", and enable Billing.
+          </p>
+        </div>
+      );
+    }
+
+    if (!isLoaded) {
+      return (
+        <div className="h-[300px] bg-gray-100 flex flex-col items-center justify-center text-gray-500 gap-2 rounded-xl border border-gray-200">
+          <Loader2 className="w-8 h-8 animate-spin" />
+          <p className="text-sm">Loading Google Maps...</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {/* --- SEARCH BAR --- */}
+        <div className="mb-4">
+          <Autocomplete
+            onLoad={onAutocompleteLoad}
+            onPlaceChanged={onPlaceChanged}
+          >
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search for a landmark (e.g. India Gate)"
+                className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black outline-none"
+              />
+              <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
+            </div>
+          </Autocomplete>
+        </div>
+
+        {/* --- MAP --- */}
+        <div className="rounded-xl overflow-hidden border border-gray-300">
+          <GoogleMap
+            mapContainerStyle={containerStyle}
+            center={
+              formData.latitude && formData.longitude
+                ? { lat: formData.latitude, lng: formData.longitude }
+                : defaultCenter
+            }
+            zoom={15}
+            onLoad={onMapLoad}
+            onUnmount={onUnmount}
+            onClick={onMapClick}
+            options={{
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: false,
+            }}
+          >
+            {formData.latitude !== 0 && (
+              <Marker
+                position={{
+                  lat: formData.latitude,
+                  lng: formData.longitude,
+                }}
+                draggable={true}
+                onDragEnd={onMarkerDragEnd}
+              />
+            )}
+          </GoogleMap>
+        </div>
+      </>
+    );
+  };
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        // [Step 1 Content - Copy paste your existing Step 1 here, unchanged]
+        // [Step 1 Content]
         return (
           <div className="space-y-6 animate-in fade-in">
             <div>
@@ -697,43 +847,7 @@ export default function CreateListingForm({ initialData = null }) {
                 </button>
               </div>
 
-              <div className="rounded-xl overflow-hidden border border-gray-300">
-                {isLoaded ? (
-                  <GoogleMap
-                    mapContainerStyle={containerStyle}
-                    // If we have data, center there. If not, default center.
-                    center={
-                      formData.latitude && formData.longitude
-                        ? { lat: formData.latitude, lng: formData.longitude }
-                        : defaultCenter
-                    }
-                    zoom={15}
-                    onClick={onMapClick}
-                  >
-                    {/* Only show marker if we have coordinates */}
-                    {formData.latitude !== 0 && (
-                      <Marker
-                        position={{
-                          lat: formData.latitude,
-                          lng: formData.longitude,
-                        }}
-                        draggable={true}
-                        onDragEnd={onMarkerDragEnd}
-                      />
-                    )}
-                  </GoogleMap>
-                ) : (
-                  <div className="h-[300px] bg-gray-100 flex flex-col items-center justify-center text-gray-500 gap-2">
-                    <Loader2 className="w-8 h-8 animate-spin" />
-                    <p className="text-sm">Loading Maps...</p>
-                    {/* Development note for you */}
-                    <p className="text-xs text-red-400 px-4 text-center">
-                      Note: If this spins forever, check your API Key in
-                      .env.local
-                    </p>
-                  </div>
-                )}
-              </div>
+              {renderMapSection()}
 
               {/* Status Text */}
               <div className="mt-2 flex justify-between items-start">
@@ -747,7 +861,7 @@ export default function CreateListingForm({ initialData = null }) {
                   </span>
                 ) : (
                   <span className="text-sm text-gray-400">
-                    Click on the map to set exact property location.
+                    Search or click on the map to set exact property location.
                   </span>
                 )}
               </div>
@@ -759,7 +873,7 @@ export default function CreateListingForm({ initialData = null }) {
           </div>
         );
       case 3:
-        // [Step 3 Content - Copy paste your existing Step 3 here, unchanged]
+        // [Step 3 Content]
         return (
           <div className="space-y-8 animate-in fade-in">
             <label className="text-center text-sm font-medium block mb-3 text-slate-600">
@@ -900,7 +1014,7 @@ export default function CreateListingForm({ initialData = null }) {
           </div>
         );
       case 4:
-        // [Step 4 Content - Copy paste your existing Step 4 here, unchanged]
+        // [Step 4 Content]
         return (
           <div className="space-y-6 animate-in fade-in">
             <div className="p-4 border rounded-xl">
@@ -976,7 +1090,7 @@ export default function CreateListingForm({ initialData = null }) {
           </div>
         );
       case 5:
-        // [Step 5 Content - Copy paste your existing Step 5 here, unchanged]
+        // [Step 5 Content]
         return (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in">
             {AMENITIES.map((item) => {
@@ -999,7 +1113,7 @@ export default function CreateListingForm({ initialData = null }) {
           </div>
         );
       case 6:
-        // [Step 6 Content - Copy paste your existing Step 6 here, unchanged]
+        // [Step 6 Content]
         return (
           <div className="space-y-6 animate-in fade-in">
             <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 hover:bg-white transition-colors relative">
