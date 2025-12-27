@@ -32,9 +32,6 @@ async function requireAdmin() {
   }
 }
 
-// ... [Keep getAdminStats, getPendingPayouts, markPayoutPaid, getPendingKYC, processKYC as they were] ...
-// (I will omit them here for brevity, assume they exist as per previous message)
-
 // --- 4. REFUNDS (Advanced Calculation) ---
 export async function getPendingRefunds(page = 1, limit = 10) {
   await requireAdmin();
