@@ -10,6 +10,42 @@ const BOOKINGS_COLLECTION_ID =
 const LISTINGS_COLLECTION_ID =
   process.env.NEXT_PUBLIC_APPWRITE_PROPERTIES_COLLECTION_ID;
 
+// --- HELPER: AUTO-REJECT OLD REQUESTS ---
+async function expireOldRequests(databases, listingIds) {
+  try {
+    // Calculate timestamp for 24 hours ago
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // Find pending bookings older than 24h for these listings
+    const expiredBookings = await databases.listDocuments(
+      DATABASE_ID,
+      BOOKINGS_COLLECTION_ID,
+      [
+        Query.equal("listingId", listingIds),
+        Query.equal("status", "pending"),
+        Query.lessThan("$createdAt", oneDayAgo),
+        Query.limit(100), // Batch size
+      ]
+    );
+
+    if (expiredBookings.total > 0) {
+      const updates = expiredBookings.documents.map((booking) =>
+        databases.updateDocument(
+          DATABASE_ID,
+          BOOKINGS_COLLECTION_ID,
+          booking.$id,
+          { status: "rejected" } // Mark as rejected automatically
+        )
+      );
+      await Promise.all(updates);
+      // We don't revalidate path here to avoid infinite loops,
+      // the data returned below will reflect changes on refresh
+    }
+  } catch (error) {
+    console.error("Auto-expire failed (non-critical):", error);
+  }
+}
+
 export async function getHostBookings(page = 1, limit = 10) {
   try {
     const { account, databases } = await createSessionClient();
@@ -25,9 +61,13 @@ export async function getHostBookings(page = 1, limit = 10) {
     if (hostListings.total === 0) return { documents: [], total: 0 };
 
     const listingIds = hostListings.documents.map((listing) => listing.$id);
+
+    // This ensures data is clean before we fetch the page
+    await expireOldRequests(databases, listingIds);
+
     const offset = (page - 1) * limit;
 
-    // 2. Get paginated bookings for those listings
+    // 2. Get paginated bookings
     const bookings = await databases.listDocuments(
       DATABASE_ID,
       BOOKINGS_COLLECTION_ID,
