@@ -39,6 +39,7 @@ export async function verifyEmailOtp(userId, secret) {
 export async function completeSignup(formData, sessionSecret) {
   const { name, password, phone, dob, location } = formData;
   try {
+    // Manually create client to set specific session secret
     const client = new Client()
       .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
       .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
@@ -70,7 +71,7 @@ export async function completeSignup(formData, sessionSecret) {
       path: "/",
       httpOnly: true,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: true, // Always true for modern browsers/Vercel
       expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
     });
 
@@ -94,7 +95,7 @@ export async function signupWithAppwrite(formData) {
       path: "/",
       httpOnly: true,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       expires: new Date(session.expire),
     });
 
@@ -115,7 +116,6 @@ export async function signupWithAppwrite(formData) {
       );
     } catch (dbError) {
       console.error("DB Creation failed:", dbError);
-      // We don't throw here to avoid failing the whole signup if just profile creation fails
     }
     return { success: true };
   } catch (error) {
@@ -142,7 +142,7 @@ export async function signinWithAppwrite(formData) {
       path: "/",
       httpOnly: true,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       expires: new Date(session.expire),
     });
     return { success: true };
@@ -156,9 +156,8 @@ export async function logout() {
     const { account } = await createSessionClient();
     await account.deleteSession("current");
   } catch (error) {
-    // Session might be invalid already, just ignore
+    // Session might be invalid already
   }
-  // Always delete cookie
   cookies().delete("appwrite-session");
   redirect("/");
 }

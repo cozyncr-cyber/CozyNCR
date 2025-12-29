@@ -1,14 +1,13 @@
 "use server";
 
 import { ID, Query } from "node-appwrite";
-import { createSessionClient } from "@/lib/appwrite";
+import { createSessionClient, createAdminClient } from "@/lib/appwrite";
 import { revalidatePath } from "next/cache";
 import { getLoggedInUser } from "./auth";
 
 const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID;
 const LISTINGS_COLLECTION_ID =
   process.env.NEXT_PUBLIC_APPWRITE_PROPERTIES_COLLECTION_ID;
-// New Collection for iCal
 const CALENDAR_COLLECTION_ID =
   process.env.NEXT_PUBLIC_APPWRITE_EXTERNAL_CALENDAR_COLLECTION_ID;
 
@@ -16,13 +15,10 @@ if (!LISTINGS_COLLECTION_ID) {
   throw new Error("Listing Collection ID is missing.");
 }
 
-// --- FETCH USER PROPERTIES ---
 export async function getUserProperties() {
   const user = await getLoggedInUser();
   if (!user) return [];
-
   const { databases } = await createSessionClient();
-
   try {
     const result = await databases.listDocuments(
       DATABASE_ID,
@@ -36,19 +32,35 @@ export async function getUserProperties() {
   }
 }
 
-// --- DELETE PROPERTY ---
 export async function deleteProperty(formData) {
+  const user = await getLoggedInUser();
+  if (!user) return { error: "Not authenticated" };
+
   const propertyId = formData.get("propertyId");
   const { databases } = await createSessionClient();
+
   try {
-    // 1. Delete Listing
+    // 1. SECURITY CHECK
+    const listing = await databases.getDocument(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      propertyId
+    );
+    if (listing.ownerId !== user.$id) {
+      console.error(
+        `[Delete] Unauthorized attempt by ${user.$id} on ${propertyId}`
+      );
+      return { error: "Unauthorized: You do not own this property" };
+    }
+
+    // 2. Perform Delete
     await databases.deleteDocument(
       DATABASE_ID,
       LISTINGS_COLLECTION_ID,
       propertyId
     );
 
-    // 2. Delete Associated Calendars (Cleanup)
+    // Cleanup Calendars
     if (CALENDAR_COLLECTION_ID) {
       const calendars = await databases.listDocuments(
         DATABASE_ID,
@@ -71,16 +83,13 @@ export async function deleteProperty(formData) {
   }
 }
 
-// --- CREATE LISTING ---
 export async function createListing(formData) {
   const user = await getLoggedInUser();
   if (!user) return { error: "Not authenticated" };
-
   const { databases } = await createSessionClient();
-
   try {
     const imageIds = JSON.parse(formData.get("finalImageIds") || "[]");
-    const icalUrls = JSON.parse(formData.get("icalUrls") || "[]"); // Get iCal URLs
+    const icalUrls = JSON.parse(formData.get("icalUrls") || "[]");
 
     const listingData = {
       ownerId: user.$id,
@@ -120,7 +129,6 @@ export async function createListing(formData) {
         : null,
     };
 
-    // 1. Create Listing Document
     const doc = await databases.createDocument(
       DATABASE_ID,
       LISTINGS_COLLECTION_ID,
@@ -128,7 +136,6 @@ export async function createListing(formData) {
       listingData
     );
 
-    // 2. Create External Calendar Documents
     if (icalUrls.length > 0 && CALENDAR_COLLECTION_ID) {
       await Promise.all(
         icalUrls.map((url) =>
@@ -136,10 +143,7 @@ export async function createListing(formData) {
             DATABASE_ID,
             CALENDAR_COLLECTION_ID,
             ID.unique(),
-            {
-              listingId: doc.$id,
-              url: url,
-            }
+            { listingId: doc.$id, url: url }
           )
         )
       );
@@ -154,7 +158,7 @@ export async function createListing(formData) {
   }
 }
 
-// --- UPDATE LISTING ---
+// --- UPDATE LISTING (SECURED) ---
 export async function updateListing(formData) {
   const user = await getLoggedInUser();
   if (!user) return { error: "Not authenticated" };
@@ -163,6 +167,21 @@ export async function updateListing(formData) {
   const listingId = formData.get("listingId");
 
   try {
+    // 1. SECURITY CHECK: Verify Ownership
+    const existingListing = await databases.getDocument(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      listingId
+    );
+
+    if (existingListing.ownerId !== user.$id) {
+      console.error(
+        `[Update] Unauthorized attempt. Owner: ${existingListing.ownerId}, User: ${user.$id}`
+      );
+      return { error: "Unauthorized: You do not own this property" };
+    }
+
+    // 2. Process Update
     const finalImageIds = JSON.parse(formData.get("finalImageIds") || "[]");
     const icalUrls = JSON.parse(formData.get("icalUrls") || "[]");
 
@@ -203,7 +222,6 @@ export async function updateListing(formData) {
         : null,
     };
 
-    // 1. Update Listing Document
     await databases.updateDocument(
       DATABASE_ID,
       LISTINGS_COLLECTION_ID,
@@ -211,23 +229,19 @@ export async function updateListing(formData) {
       listingData
     );
 
-    // 2. Handle iCal URLs (Delete existing, recreate new)
+    // 3. Handle iCal
     if (CALENDAR_COLLECTION_ID) {
-      // Fetch existing
       const existingCals = await databases.listDocuments(
         DATABASE_ID,
         CALENDAR_COLLECTION_ID,
         [Query.equal("listingId", listingId)]
       );
-
-      // Delete all
       await Promise.all(
         existingCals.documents.map((doc) =>
           databases.deleteDocument(DATABASE_ID, CALENDAR_COLLECTION_ID, doc.$id)
         )
       );
 
-      // Create new
       if (icalUrls.length > 0) {
         await Promise.all(
           icalUrls.map((url) =>
@@ -235,10 +249,7 @@ export async function updateListing(formData) {
               DATABASE_ID,
               CALENDAR_COLLECTION_ID,
               ID.unique(),
-              {
-                listingId: listingId,
-                url: url,
-              }
+              { listingId: listingId, url: url }
             )
           )
         );
@@ -254,9 +265,10 @@ export async function updateListing(formData) {
   }
 }
 
-// --- GET LISTING BY ID (WITH iCALs) ---
+// --- GET LISTING (PUBLIC VIEW) ---
 export async function getListingById(id) {
-  const { databases } = await createSessionClient();
+  // Use Admin Client so unauthenticated users can see details
+  const { databases } = await createAdminClient();
   try {
     const doc = await databases.getDocument(
       DATABASE_ID,
@@ -264,9 +276,9 @@ export async function getListingById(id) {
       id
     );
 
-    // Fetch associated calendars
     let calendars = [];
     if (CALENDAR_COLLECTION_ID) {
+      // Only fetch calendars if configured
       const calDocs = await databases.listDocuments(
         DATABASE_ID,
         CALENDAR_COLLECTION_ID,
@@ -277,7 +289,6 @@ export async function getListingById(id) {
 
     return { ...doc, icalUrls: calendars };
   } catch (error) {
-    console.error("Fetch Listing Error:", error);
     return null;
   }
 }

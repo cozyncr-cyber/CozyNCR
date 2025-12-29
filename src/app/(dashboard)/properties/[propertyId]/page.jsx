@@ -14,7 +14,6 @@ import {
   Clock,
   Check,
   XCircle,
-  // Amenities Icons
   Wifi,
   Car,
   Snowflake,
@@ -36,10 +35,13 @@ import {
   BriefcaseMedical,
 } from "lucide-react";
 import { getListingById } from "@/actions/listings";
+import { getLoggedInUser } from "@/actions/auth";
 import DownloadAppSection from "@/components/downloadAppComponent";
-import Link from "next/link"; // Changed to Next Link for better performance
+import Link from "next/link";
 
-// --- AMENITY CONFIGURATION (Mapping IDs to Icons & Labels) ---
+// Force dynamic rendering to prevent caching of auth state
+export const dynamic = "force-dynamic";
+
 const AMENITY_CONFIG = {
   wifi: { label: "Fast Wifi", icon: Wifi },
   ac: { label: "Air Conditioning", icon: Snowflake },
@@ -65,8 +67,13 @@ const AMENITY_CONFIG = {
 
 export default async function PropertyDetailPage({ params }) {
   const listing = await getListingById(params.propertyId);
+  const user = await getLoggedInUser();
+
   if (!listing)
     return <div className="p-10 text-center">Property Not Found</div>;
+
+  // Ownership Check
+  const isOwner = user && listing.ownerId && user.$id === listing.ownerId;
 
   const getImageUrl = (fileId) => {
     return `https://cloud.appwrite.io/v1/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
@@ -75,13 +82,9 @@ export default async function PropertyDetailPage({ params }) {
   const images = listing.imageIds || [];
   const addOns = listing.addOns ? JSON.parse(listing.addOns) : [];
 
-  // --- Helper to Render Amenity ---
-  // Handles both new ID-based amenities and potential old string-based ones
   const renderAmenity = (amenityKey) => {
     const config = AMENITY_CONFIG[amenityKey];
-
     if (config) {
-      // It's a known new amenity
       const Icon = config.icon;
       return (
         <div
@@ -95,7 +98,6 @@ export default async function PropertyDetailPage({ params }) {
         </div>
       );
     } else {
-      // It's a custom or old amenity (fallback)
       return (
         <div
           key={amenityKey}
@@ -112,7 +114,6 @@ export default async function PropertyDetailPage({ params }) {
 
   return (
     <div className="max-w-7xl mx-auto pb-20 px-4 sm:px-6 bg-white min-h-screen">
-      {/* Top Navigation */}
       <div className="flex items-center justify-between py-6">
         <Link
           href="/properties"
@@ -123,15 +124,18 @@ export default async function PropertyDetailPage({ params }) {
           </div>
           Back to Listings
         </Link>
-        <Link
-          href={`/properties/${listing.$id}/edit`}
-          className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
-        >
-          <Edit2 className="w-4 h-4" /> Edit Listing
-        </Link>
+
+        {/* SECURE BUTTON: Only render if ownership check passes */}
+        {isOwner && (
+          <Link
+            href={`/properties/${listing.$id}/edit`}
+            className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
+          >
+            <Edit2 className="w-4 h-4" /> Edit Listing
+          </Link>
+        )}
       </div>
 
-      {/* Hero Header */}
       <div className="mb-8">
         <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight leading-tight">
           {listing.title}
@@ -151,9 +155,7 @@ export default async function PropertyDetailPage({ params }) {
         </div>
       </div>
 
-      {/* Hero Image Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 h-[450px] md:h-[550px] mb-12 rounded-3xl overflow-hidden shadow-sm">
-        {/* Main Large Image */}
         <div className="md:col-span-2 h-full bg-gray-100 relative group cursor-pointer">
           {images[0] ? (
             <>
@@ -170,7 +172,6 @@ export default async function PropertyDetailPage({ params }) {
             </div>
           )}
         </div>
-        {/* Smaller Images Grid */}
         <div className="md:col-span-2 grid grid-cols-2 gap-3 h-full">
           {[1, 2, 3, 4].map((idx) => (
             <div
@@ -196,11 +197,8 @@ export default async function PropertyDetailPage({ params }) {
         </div>
       </div>
 
-      {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
-        {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-12">
-          {/* Description Section */}
           <div className="pb-10 border-b border-gray-100">
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
               About this space
@@ -210,7 +208,6 @@ export default async function PropertyDetailPage({ params }) {
             </div>
           </div>
 
-          {/* Amenities Section */}
           <div className="pb-10 border-b border-gray-100">
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
               What this place offers
@@ -224,13 +221,11 @@ export default async function PropertyDetailPage({ params }) {
             )}
           </div>
 
-          {/* Capacity & Rules */}
           <div className="pb-10 border-b border-gray-100">
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
               Who can stay
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {/* Card 1: Total Guests */}
               <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                 <Users className="w-6 h-6 text-gray-400 mb-2" />
                 <span className="block text-2xl font-bold text-gray-900">
@@ -240,8 +235,6 @@ export default async function PropertyDetailPage({ params }) {
                   Guests
                 </span>
               </div>
-
-              {/* Card 2: Children */}
               <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                 {listing.allowChildren ? (
                   <>
@@ -265,8 +258,6 @@ export default async function PropertyDetailPage({ params }) {
                   </>
                 )}
               </div>
-
-              {/* Card 3: Infants */}
               {listing.allowChildren && listing.maxInfants > 0 && (
                 <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                   <Baby className="w-6 h-6 text-gray-400 mb-2" />
@@ -278,8 +269,6 @@ export default async function PropertyDetailPage({ params }) {
                   </span>
                 </div>
               )}
-
-              {/* Card 4: Pets */}
               {listing.maxPets > 0 && (
                 <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                   <Dog className="w-6 h-6 text-gray-400 mb-2" />
@@ -294,7 +283,6 @@ export default async function PropertyDetailPage({ params }) {
             </div>
           </div>
 
-          {/* Timings */}
           <div>
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
               Operating Hours
@@ -318,7 +306,6 @@ export default async function PropertyDetailPage({ params }) {
                   <span className="text-gray-900">{listing.weekdayClose}</span>
                 </div>
               </div>
-              {/* Weekend box */}
               <div className="p-6 rounded-2xl border border-purple-100 bg-purple-50/50 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-purple-100 rounded-lg">
@@ -341,7 +328,6 @@ export default async function PropertyDetailPage({ params }) {
           </div>
         </div>
 
-        {/* RIGHT COLUMN (Pricing Card) */}
         <div className="lg:col-span-1">
           <div className="sticky top-28">
             <div className="bg-white rounded-3xl border border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden">
@@ -360,10 +346,8 @@ export default async function PropertyDetailPage({ params }) {
                   Based on selected duration
                 </p>
               </div>
-
               <div className="p-6 space-y-5">
                 <div className="space-y-3">
-                  {/* Pricing Rows */}
                   {["3h", "6h", "12h", "24h"].map((dur) => {
                     const price = listing[`price_${dur}`];
                     if (!price) return null;
@@ -387,7 +371,6 @@ export default async function PropertyDetailPage({ params }) {
                     );
                   })}
                 </div>
-
                 {addOns.length > 0 && (
                   <div className="pt-5 border-t border-gray-100">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
@@ -408,7 +391,6 @@ export default async function PropertyDetailPage({ params }) {
                     </div>
                   </div>
                 )}
-
                 <div className="pt-4 border-t border-gray-100">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div className="text-xs font-medium text-gray-500">
@@ -424,7 +406,6 @@ export default async function PropertyDetailPage({ params }) {
           </div>
         </div>
       </div>
-
       <DownloadAppSection />
     </div>
   );
