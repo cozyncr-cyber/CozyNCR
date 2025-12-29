@@ -14,12 +14,59 @@ import {
   Clock,
   Check,
   XCircle,
+  // Amenities Icons
+  Wifi,
+  Car,
+  Snowflake,
+  Tv,
+  Monitor,
+  Coffee,
+  Utensils,
+  Wind,
+  Cigarette,
+  Wine,
+  Zap,
+  Accessibility,
+  ShieldCheck,
+  Speaker,
+  Flame,
+  Key,
+  Waves,
+  Flower2,
+  BriefcaseMedical,
 } from "lucide-react";
 import { getListingById } from "@/actions/listings";
+import DownloadAppSection from "@/components/downloadAppComponent";
+import Link from "next/link"; // Changed to Next Link for better performance
+
+// --- AMENITY CONFIGURATION (Mapping IDs to Icons & Labels) ---
+const AMENITY_CONFIG = {
+  wifi: { label: "Fast Wifi", icon: Wifi },
+  ac: { label: "Air Conditioning", icon: Snowflake },
+  tv: { label: "Smart TV", icon: Tv },
+  kitchen: { label: "Kitchen", icon: Utensils },
+  parking: { label: "Parking", icon: Car },
+  desk: { label: "Work Desk", icon: Monitor },
+  coffee: { label: "Coffee Machine", icon: Coffee },
+  washing_machine: { label: "Washing Machine", icon: Waves },
+  lift: { label: "Elevator/Lift", icon: Accessibility },
+  power_backup: { label: "Power Backup", icon: Zap },
+  balcony: { label: "Balcony", icon: Wind },
+  garden: { label: "Garden", icon: Flower2 },
+  sound_system: { label: "Sound System", icon: Speaker },
+  private_entrance: { label: "Private Entrance", icon: Key },
+  first_aid: { label: "First Aid Kit", icon: BriefcaseMedical },
+  fire_ext: { label: "Fire Extinguisher", icon: Flame },
+  safety: { label: "24/7 Security", icon: ShieldCheck },
+  smoking: { label: "Smoking Allowed", icon: Cigarette },
+  alcohol: { label: "Alcohol Allowed", icon: Wine },
+  party: { label: "Party Friendly", icon: PartyPopper },
+};
 
 export default async function PropertyDetailPage({ params }) {
   const listing = await getListingById(params.propertyId);
-  if (!listing) return <div>Not Found</div>;
+  if (!listing)
+    return <div className="p-10 text-center">Property Not Found</div>;
 
   const getImageUrl = (fileId) => {
     return `https://cloud.appwrite.io/v1/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID}/files/${fileId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`;
@@ -28,11 +75,46 @@ export default async function PropertyDetailPage({ params }) {
   const images = listing.imageIds || [];
   const addOns = listing.addOns ? JSON.parse(listing.addOns) : [];
 
+  // --- Helper to Render Amenity ---
+  // Handles both new ID-based amenities and potential old string-based ones
+  const renderAmenity = (amenityKey) => {
+    const config = AMENITY_CONFIG[amenityKey];
+
+    if (config) {
+      // It's a known new amenity
+      const Icon = config.icon;
+      return (
+        <div
+          key={amenityKey}
+          className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
+        >
+          <Icon className="w-5 h-5 text-gray-700" />
+          <span className="text-gray-700 font-medium text-sm">
+            {config.label}
+          </span>
+        </div>
+      );
+    } else {
+      // It's a custom or old amenity (fallback)
+      return (
+        <div
+          key={amenityKey}
+          className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100"
+        >
+          <CheckCircle className="w-5 h-5 text-gray-400" />
+          <span className="text-gray-700 font-medium text-sm capitalize">
+            {amenityKey.replace(/_/g, " ")}
+          </span>
+        </div>
+      );
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto pb-20 px-4 sm:px-6 bg-white min-h-screen">
       {/* Top Navigation */}
       <div className="flex items-center justify-between py-6">
-        <a
+        <Link
           href="/properties"
           className="group flex items-center text-sm font-medium text-gray-500 hover:text-black transition-colors"
         >
@@ -40,21 +122,21 @@ export default async function PropertyDetailPage({ params }) {
             <ChevronLeft className="w-4 h-4" />
           </div>
           Back to Listings
-        </a>
-        <a
+        </Link>
+        <Link
           href={`/properties/${listing.$id}/edit`}
           className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
         >
           <Edit2 className="w-4 h-4" /> Edit Listing
-        </a>
+        </Link>
       </div>
 
       {/* Hero Header */}
       <div className="mb-8">
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight leading-tight">
+        <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mb-4 tracking-tight leading-tight">
           {listing.title}
         </h1>
-        <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-gray-600">
           <span className="flex items-center gap-1.5 font-medium underline decoration-gray-300 hover:text-rose-600 transition-colors cursor-pointer">
             <MapPin className="w-4 h-4" /> {listing.city}, {listing.state}
           </span>
@@ -63,7 +145,7 @@ export default async function PropertyDetailPage({ params }) {
             <Users className="w-4 h-4" /> {listing.maxGuests} Guests
           </span>
           <span className="hidden sm:inline w-1 h-1 bg-gray-300 rounded-full"></span>
-          <span className="capitalize px-3 py-1 bg-gray-100 rounded-full text-xs font-bold tracking-wide">
+          <span className="capitalize px-3 py-1 bg-gray-100 rounded-full text-xs font-bold tracking-wide border border-gray-200">
             {listing.category}
           </span>
         </div>
@@ -118,14 +200,28 @@ export default async function PropertyDetailPage({ params }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
         {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-12">
-          {/* Description */}
+          {/* Description Section */}
           <div className="pb-10 border-b border-gray-100">
             <h2 className="text-2xl font-serif font-bold text-gray-900 mb-4">
               About this space
             </h2>
-            <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-wrap max-w-none">
-              {listing.description}
+            <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-wrap max-w-none font-light">
+              {listing.description || "No description provided."}
             </div>
+          </div>
+
+          {/* Amenities Section */}
+          <div className="pb-10 border-b border-gray-100">
+            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
+              What this place offers
+            </h2>
+            {listing.amenities && listing.amenities.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {listing.amenities.map((amenity) => renderAmenity(amenity))}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">No amenities listed.</p>
+            )}
           </div>
 
           {/* Capacity & Rules */}
@@ -134,8 +230,8 @@ export default async function PropertyDetailPage({ params }) {
               Who can stay
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {/* Card 1: Total Guests (Merged) */}
-              <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
+              {/* Card 1: Total Guests */}
+              <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                 <Users className="w-6 h-6 text-gray-400 mb-2" />
                 <span className="block text-2xl font-bold text-gray-900">
                   {listing.maxGuests}
@@ -145,8 +241,8 @@ export default async function PropertyDetailPage({ params }) {
                 </span>
               </div>
 
-              {/* Card 2: Children Policy */}
-              <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
+              {/* Card 2: Children */}
+              <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                 {listing.allowChildren ? (
                   <>
                     <CheckCircle className="w-6 h-6 text-green-500 mb-2" />
@@ -170,9 +266,9 @@ export default async function PropertyDetailPage({ params }) {
                 )}
               </div>
 
-              {/* Card 3: Infants (Conditional - ONLY if children are allowed AND maxInfants > 0) */}
+              {/* Card 3: Infants */}
               {listing.allowChildren && listing.maxInfants > 0 && (
-                <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
+                <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                   <Baby className="w-6 h-6 text-gray-400 mb-2" />
                   <span className="block text-2xl font-bold text-gray-900">
                     {listing.maxInfants}
@@ -183,9 +279,9 @@ export default async function PropertyDetailPage({ params }) {
                 </div>
               )}
 
-              {/* Card 4: Pets (Conditional) */}
+              {/* Card 4: Pets */}
               {listing.maxPets > 0 && (
-                <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center hover:bg-white hover:shadow-md transition-all duration-300">
+                <div className="p-5 bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm">
                   <Dog className="w-6 h-6 text-gray-400 mb-2" />
                   <span className="block text-2xl font-bold text-gray-900">
                     {listing.maxPets}
@@ -195,28 +291,6 @@ export default async function PropertyDetailPage({ params }) {
                   </span>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Amenities */}
-          <div className="pb-10 border-b border-gray-100">
-            <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">
-              What this place offers
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6">
-              {listing.amenities.map((amenity) => (
-                <div
-                  key={amenity}
-                  className="flex items-center gap-3 text-gray-700 group"
-                >
-                  <div className="p-1 rounded-full bg-stone-100 text-stone-600">
-                    <Check size={14} strokeWidth={3} />
-                  </div>
-                  <span className="capitalize font-medium text-[15px] border-b border-transparent group-hover:border-gray-300 transition-colors">
-                    {amenity}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
 
@@ -267,7 +341,7 @@ export default async function PropertyDetailPage({ params }) {
           </div>
         </div>
 
-        {/* RIGHT COLUMN */}
+        {/* RIGHT COLUMN (Pricing Card) */}
         <div className="lg:col-span-1">
           <div className="sticky top-28">
             <div className="bg-white rounded-3xl border border-gray-200 shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden">
@@ -350,6 +424,8 @@ export default async function PropertyDetailPage({ params }) {
           </div>
         </div>
       </div>
+
+      <DownloadAppSection />
     </div>
   );
 }

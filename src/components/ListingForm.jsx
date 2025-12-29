@@ -26,7 +26,22 @@ import {
   GripVertical,
   Trash2,
   AlertCircle,
-  Search, // Added Search Icon
+  Search,
+  // New Icons for Amenities
+  Utensils,
+  Wind, // Balcony
+  Cigarette,
+  Wine,
+  Zap, // Power
+  Accessibility, // Lift/Accessibility
+  ShieldCheck, // Safety
+  Speaker,
+  Flame, // Fire Extinguisher
+  Key, // Private Entrance
+  Waves, // Washing Machine? Using Waves for now or generic
+  Flower2, // Garden
+  BriefcaseMedical, // First Aid
+  Users, // Party Friendly
 } from "lucide-react";
 import { createListing, updateListing } from "@/actions/listings";
 import Image from "next/image";
@@ -34,7 +49,6 @@ import { useRouter } from "next/navigation";
 import { State, City } from "country-state-city";
 import { clientStorage, ID } from "@/lib/appwrite-client";
 
-// --- 1. IMPORT GOOGLE MAPS & AUTOCOMPLETE ---
 import {
   GoogleMap,
   useJsApiLoader,
@@ -42,12 +56,11 @@ import {
   Autocomplete,
 } from "@react-google-maps/api";
 
-// --- CONSTANTS ---
 const STEPS = [
   { id: 1, label: "The Basics" },
   { id: 2, label: "Location" },
   { id: 3, label: "Pricing & Services" },
-  { id: 4, label: "Schedule" },
+  { id: 4, label: "Schedule & Sync" }, // Updated Label
   { id: 5, label: "Amenities" },
   { id: 6, label: "Photos" },
 ];
@@ -81,13 +94,29 @@ const CATEGORIES = [
   },
 ];
 
+// --- UPDATED AMENITIES LIST (20 ITEMS) ---
 const AMENITIES = [
   { id: "wifi", label: "Fast Wifi", icon: <Wifi /> },
-  { id: "parking", label: "Parking", icon: <Car /> },
   { id: "ac", label: "Air Conditioning", icon: <Snowflake /> },
   { id: "tv", label: "Smart TV", icon: <Tv /> },
+  { id: "kitchen", label: "Kitchen", icon: <Utensils /> },
+  { id: "parking", label: "Parking", icon: <Car /> },
   { id: "desk", label: "Work Desk", icon: <Monitor /> },
   { id: "coffee", label: "Coffee Machine", icon: <Coffee /> },
+  { id: "washing_machine", label: "Washing Machine", icon: <Waves /> },
+  { id: "lift", label: "Elevator/Lift", icon: <Accessibility /> },
+  { id: "power_backup", label: "Power Backup", icon: <Zap /> },
+  { id: "balcony", label: "Balcony", icon: <Wind /> },
+  { id: "garden", label: "Garden", icon: <Flower2 /> },
+  { id: "sound_system", label: "Sound System", icon: <Speaker /> },
+  { id: "private_entrance", label: "Private Entrance", icon: <Key /> },
+  { id: "first_aid", label: "First Aid Kit", icon: <BriefcaseMedical /> },
+  { id: "fire_ext", label: "Fire Extinguisher", icon: <Flame /> },
+  { id: "safety", label: "24/7 Security", icon: <ShieldCheck /> },
+  // Rules turned into Amenities for filtering
+  { id: "smoking", label: "Smoking Allowed", icon: <Cigarette /> },
+  { id: "alcohol", label: "Alcohol Allowed", icon: <Wine /> },
+  { id: "party", label: "Party Friendly", icon: <Users /> },
 ];
 
 const DURATIONS = [
@@ -119,7 +148,7 @@ const Counter = ({ label, value, onChange, subtitle, disabled = false }) => (
         onClick={() => onChange(Math.max(0, value - 1))}
         className={`p-2 rounded-full border border-gray-300 transition-colors ${
           value === 0 || disabled
-            ? "opacity-30 cursor-not-allowed border-gray-200"
+            ? "opacity-30 cursor-not-allowed"
             : "hover:border-black"
         }`}
         disabled={value === 0 || disabled}
@@ -137,9 +166,7 @@ const Counter = ({ label, value, onChange, subtitle, disabled = false }) => (
         type="button"
         onClick={() => onChange(value + 1)}
         className={`p-2 rounded-full border border-gray-300 transition-colors ${
-          disabled
-            ? "opacity-30 cursor-not-allowed border-gray-200"
-            : "hover:border-black"
+          disabled ? "opacity-30 cursor-not-allowed" : "hover:border-black"
         }`}
         disabled={disabled}
       >
@@ -149,21 +176,17 @@ const Counter = ({ label, value, onChange, subtitle, disabled = false }) => (
   </div>
 );
 
-// --- MAP CONFIG ---
 const containerStyle = {
   width: "100%",
   height: "300px",
   borderRadius: "0.75rem",
 };
 
-// Default center (New Delhi) if no location set
 const defaultCenter = {
   lat: 28.6139,
   lng: 77.209,
 };
 
-// Define libraries outside component to prevent re-renders
-// Crucial: "places" must be here for Autocomplete
 const libraries = ["places"];
 
 export default function CreateListingForm({ initialData = null }) {
@@ -180,11 +203,9 @@ export default function CreateListingForm({ initialData = null }) {
   const [visualImages, setVisualImages] = useState([]);
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
 
-  // --- MAP REFS ---
   const [map, setMap] = useState(null);
   const autocompleteRef = useRef(null);
 
-  // --- 2. LOAD GOOGLE MAPS SCRIPT ---
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -217,6 +238,8 @@ export default function CreateListingForm({ initialData = null }) {
     },
     weekendMultiplier: initialData?.weekendMultiplier || 0,
     addOns: initialData?.addOns ? JSON.parse(initialData.addOns) : [],
+    // ICAL URLs state
+    icalUrls: initialData?.icalUrls || [],
     weekdayOpen: initialData?.weekdayOpen || "09:00",
     weekdayClose: initialData?.weekdayClose || "21:00",
     weekendOpen: initialData?.weekendOpen || "10:00",
@@ -225,7 +248,6 @@ export default function CreateListingForm({ initialData = null }) {
     amenities: initialData?.amenities || [],
   });
 
-  // [UseEffects for states/cities/initialData]
   useEffect(() => {
     const statesData = State.getStatesOfCountry(selectedCountry);
     setStates(statesData);
@@ -328,16 +350,33 @@ export default function CreateListingForm({ initialData = null }) {
     });
   };
 
-  // --- 3. MAP & SEARCH HANDLERS ---
+  // --- ICAL HANDLERS ---
+  const addIcal = () => {
+    if (formData.icalUrls.length >= 10) return;
+    setFormData((prev) => ({
+      ...prev,
+      icalUrls: [...prev.icalUrls, ""],
+    }));
+  };
 
-  const onMapLoad = useCallback((map) => {
-    setMap(map);
-  }, []);
+  const removeIcal = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      icalUrls: prev.icalUrls.filter((_, i) => i !== index),
+    }));
+  };
 
-  const onUnmount = useCallback(() => {
-    setMap(null);
-  }, []);
+  const updateIcal = (index, value) => {
+    setFormData((prev) => {
+      const newUrls = [...prev.icalUrls];
+      newUrls[index] = value;
+      return { ...prev, icalUrls: newUrls };
+    });
+  };
 
+  // --- MAP HANDLERS ---
+  const onMapLoad = useCallback((map) => setMap(map), []);
+  const onUnmount = useCallback(() => setMap(null), []);
   const onAutocompleteLoad = (autocomplete) => {
     autocompleteRef.current = autocomplete;
   };
@@ -345,12 +384,7 @@ export default function CreateListingForm({ initialData = null }) {
   const onPlaceChanged = () => {
     if (autocompleteRef.current !== null) {
       const place = autocompleteRef.current.getPlace();
-
-      if (!place.geometry || !place.geometry.location) {
-        // User entered the name of a Place that was not suggested and
-        // pressed the Enter key, or the Place Details request failed.
-        return;
-      }
+      if (!place.geometry || !place.geometry.location) return;
 
       const lat = place.geometry.location.lat();
       const lng = place.geometry.location.lng();
@@ -359,15 +393,13 @@ export default function CreateListingForm({ initialData = null }) {
         ...prev,
         latitude: lat,
         longitude: lng,
-        address: place.formatted_address || prev.address, // Auto-fill address if available
+        address: place.formatted_address || prev.address,
       }));
 
-      // Fly to location
       if (map) {
         map.panTo({ lat, lng });
         map.setZoom(17);
       }
-
       if (errors.location) setErrors((prev) => ({ ...prev, location: null }));
     }
   };
@@ -407,12 +439,10 @@ export default function CreateListingForm({ initialData = null }) {
           latitude: lat,
           longitude: lng,
         }));
-
         if (map) {
           map.panTo({ lat, lng });
           map.setZoom(17);
         }
-
         setIsLocating(false);
         if (errors.location) setErrors((prev) => ({ ...prev, location: null }));
       },
@@ -423,7 +453,6 @@ export default function CreateListingForm({ initialData = null }) {
     );
   };
 
-  // [File Upload/Drag Logic]
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     const validFiles = files.filter((f) => f.type.startsWith("image/"));
@@ -457,7 +486,6 @@ export default function CreateListingForm({ initialData = null }) {
 
   const onDragEnd = () => setDraggedItemIndex(null);
 
-  // [Validation & Submit]
   const validateStep = (step) => {
     const newErrors = {};
     if (step === 1) {
@@ -509,19 +537,12 @@ export default function CreateListingForm({ initialData = null }) {
         (img) => img.type === "new"
       );
       const uploadPromises = newImagesToUpload.map(async (img) => {
-        try {
-          const result = await clientStorage.createFile(
-            process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID,
-            ID.unique(),
-            img.file
-          );
-          return { tempId: img.id, realId: result.$id };
-        } catch (uploadError) {
-          console.error("Upload failed for file:", img.file.name, uploadError);
-          throw new Error(
-            `Failed to upload ${img.file.name}. Please try again.`
-          );
-        }
+        const result = await clientStorage.createFile(
+          process.env.NEXT_PUBLIC_APPWRITE_BUCKET_ID,
+          ID.unique(),
+          img.file
+        );
+        return { tempId: img.id, realId: result.$id };
       });
 
       const uploadedResults = await Promise.all(uploadPromises);
@@ -531,18 +552,20 @@ export default function CreateListingForm({ initialData = null }) {
       });
 
       const finalOrderedIds = visualImages
-        .map((img) => {
-          if (img.type === "existing") {
-            return img.id;
-          } else {
-            return uploadMap[img.id];
-          }
-        })
+        .map((img) => (img.type === "existing" ? img.id : uploadMap[img.id]))
         .filter(Boolean);
 
       const data = new FormData();
       Object.keys(formData).forEach((key) => {
-        if (["amenities", "prices", "offeredDurations", "addOns"].includes(key))
+        if (
+          [
+            "amenities",
+            "prices",
+            "offeredDurations",
+            "addOns",
+            "icalUrls",
+          ].includes(key)
+        )
           return;
         data.append(key, formData[key]);
       });
@@ -553,6 +576,12 @@ export default function CreateListingForm({ initialData = null }) {
       });
 
       data.append("addOns", JSON.stringify(formData.addOns));
+      // Pass valid iCal URLs
+      const validIcals = formData.icalUrls.filter(
+        (url) => url && url.trim() !== ""
+      );
+      data.append("icalUrls", JSON.stringify(validIcals));
+
       data.append("finalImageIds", JSON.stringify(finalOrderedIds));
 
       if (isEditMode) {
@@ -572,7 +601,6 @@ export default function CreateListingForm({ initialData = null }) {
     }
   };
 
-  // --- RENDER MAP CONTENT ---
   const renderMapSection = () => {
     if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
       return (
@@ -580,36 +608,26 @@ export default function CreateListingForm({ initialData = null }) {
           <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
           <h3 className="text-red-800 font-bold mb-1">API Key Missing</h3>
           <p className="text-red-600 text-sm">
-            Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your .env.local file
-            and restart the server.
+            Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local
           </p>
         </div>
       );
     }
-
-    if (loadError) {
+    if (loadError)
       return (
-        <div className="h-[300px] bg-red-50 border border-red-200 rounded-xl flex flex-col items-center justify-center p-6 text-center">
-          <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
-          <h3 className="text-red-800 font-bold mb-1">Failed to Load Map</h3>
-          <p className="text-red-600 text-sm mb-2">{loadError.message}</p>
-          <p className="text-xs text-red-500 max-w-xs"></p>
+        <div className="h-[300px] bg-red-50 text-red-600 flex items-center justify-center">
+          Map Load Error
         </div>
       );
-    }
-
-    if (!isLoaded) {
+    if (!isLoaded)
       return (
-        <div className="h-[300px] bg-gray-100 flex flex-col items-center justify-center text-gray-500 gap-2 rounded-xl border border-gray-200">
+        <div className="h-[300px] bg-gray-100 flex items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin" />
-          <p className="text-sm">Loading Google Maps...</p>
         </div>
       );
-    }
 
     return (
       <>
-        {/* --- SEARCH BAR --- */}
         <div className="mb-4">
           <Autocomplete
             onLoad={onAutocompleteLoad}
@@ -618,15 +636,13 @@ export default function CreateListingForm({ initialData = null }) {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search for a landmark (e.g. India Gate)"
+                placeholder="Search landmark (e.g. India Gate)"
                 className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-black outline-none"
               />
               <Search className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
             </div>
           </Autocomplete>
         </div>
-
-        {/* --- MAP --- */}
         <div className="rounded-xl overflow-hidden border border-gray-300">
           <GoogleMap
             mapContainerStyle={containerStyle}
@@ -647,10 +663,7 @@ export default function CreateListingForm({ initialData = null }) {
           >
             {formData.latitude !== 0 && (
               <Marker
-                position={{
-                  lat: formData.latitude,
-                  lng: formData.longitude,
-                }}
+                position={{ lat: formData.latitude, lng: formData.longitude }}
                 draggable={true}
                 onDragEnd={onMarkerDragEnd}
               />
@@ -664,7 +677,6 @@ export default function CreateListingForm({ initialData = null }) {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        // [Step 1 Content]
         return (
           <div className="space-y-6 animate-in fade-in">
             <div>
@@ -678,7 +690,7 @@ export default function CreateListingForm({ initialData = null }) {
                     onClick={() =>
                       setFormData({ ...formData, category: cat.id })
                     }
-                    className={`border-2 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-black ${
+                    className={`border-2 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all ${
                       formData.category === cat.id
                         ? "border-black bg-gray-50"
                         : "border-gray-200"
@@ -700,7 +712,7 @@ export default function CreateListingForm({ initialData = null }) {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-black outline-none"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-black"
                 placeholder="e.g. Cozy Studio in Downtown"
               />
             </div>
@@ -713,15 +725,15 @@ export default function CreateListingForm({ initialData = null }) {
                 rows={5}
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-black outline-none"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-black"
                 placeholder="Tell guests what makes your place unique..."
               />
             </div>
             <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-              <h3 className="font-semibold mb-4">Guest Capacity & Rules</h3>
+              <h3 className="font-semibold mb-4">Guest Capacity</h3>
               <Counter
                 label="Guests"
-                subtitle="Total capacity (Adults + Children)"
+                subtitle="Total capacity"
                 value={formData.maxGuests}
                 onChange={(v) =>
                   setFormData({ ...formData, maxGuests: Math.max(1, v) })
@@ -733,36 +745,30 @@ export default function CreateListingForm({ initialData = null }) {
                     Allow Children
                   </div>
                   <div className="text-xs text-gray-500">
-                    Is this property suitable for children (2-12)?
+                    Is this suitable for children?
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={formData.allowChildren}
-                    onChange={(e) => {
-                      const isAllowed = e.target.checked;
-                      setFormData({
-                        ...formData,
-                        allowChildren: isAllowed,
-                        maxInfants: isAllowed ? formData.maxInfants : 0,
-                      });
-                    }}
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
-                </label>
+                <input
+                  type="checkbox"
+                  checked={formData.allowChildren}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      allowChildren: e.target.checked,
+                      maxInfants: e.target.checked ? formData.maxInfants : 0,
+                    })
+                  }
+                  className="w-5 h-5 accent-black"
+                />
               </div>
               <Counter
                 label="Infants"
-                subtitle="Under 2"
                 value={formData.maxInfants}
                 disabled={!formData.allowChildren}
                 onChange={(v) => setFormData({ ...formData, maxInfants: v })}
               />
               <Counter
                 label="Pets"
-                subtitle="Service animals allowed"
                 value={formData.maxPets}
                 onChange={(v) => setFormData({ ...formData, maxPets: v })}
               />
@@ -772,7 +778,6 @@ export default function CreateListingForm({ initialData = null }) {
       case 2:
         return (
           <div className="space-y-6 animate-in fade-in">
-            {/* Location Fields */}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Street Address
@@ -823,46 +828,23 @@ export default function CreateListingForm({ initialData = null }) {
                 </select>
               </div>
             </div>
-
-            {/* --- GOOGLE MAPS SECTION --- */}
             <div className="pt-4 border-t">
               <div className="flex justify-between items-center mb-4">
-                <label className="text-sm font-medium">
-                  Pin Location on Map
-                </label>
+                <label className="text-sm font-medium">Pin Location</label>
                 <button
                   onClick={handleLocationDetect}
                   disabled={isLocating}
-                  className="text-xs bg-black text-white px-3 py-1.5 rounded-full flex items-center gap-1 hover:bg-gray-800"
+                  className="text-xs bg-black text-white px-3 py-1.5 rounded-full flex items-center gap-1"
                 >
                   {isLocating ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
                     <MapPin className="w-3 h-3" />
-                  )}
-                  {isLocating ? "Locating..." : "Use Current Location"}
+                  )}{" "}
+                  {isLocating ? "Locating..." : "Use Current"}
                 </button>
               </div>
-
               {renderMapSection()}
-
-              {/* Status Text */}
-              <div className="mt-2 flex justify-between items-start">
-                {formData.latitude ? (
-                  <span className="text-sm font-medium text-green-600 flex items-center gap-2">
-                    <Check className="w-4 h-4" /> Location Pinned
-                    <span className="text-gray-500 font-normal text-xs">
-                      ({formData.latitude.toFixed(4)},{" "}
-                      {formData.longitude.toFixed(4)})
-                    </span>
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-400">
-                    Search or click on the map to set exact property location.
-                  </span>
-                )}
-              </div>
-
               {errors.location && (
                 <p className="text-red-500 text-xs mt-1">{errors.location}</p>
               )}
@@ -870,12 +852,8 @@ export default function CreateListingForm({ initialData = null }) {
           </div>
         );
       case 3:
-        // [Step 3 Content]
         return (
           <div className="space-y-8 animate-in fade-in">
-            <label className="text-center text-sm font-medium block mb-3 text-slate-600">
-              We charge 10%, 90% goes to you
-            </label>
             <div>
               <label className="text-sm font-medium block mb-3">
                 Select available durations
@@ -885,7 +863,7 @@ export default function CreateListingForm({ initialData = null }) {
                   <button
                     key={dur.id}
                     onClick={() => toggleDuration(dur.id)}
-                    className={`px-4 py-2 rounded-full border text-sm transition-all ${
+                    className={`px-4 py-2 rounded-full border text-sm ${
                       formData.offeredDurations.includes(dur.id)
                         ? "bg-black text-white border-black"
                         : "bg-white text-gray-600 border-gray-200"
@@ -948,17 +926,12 @@ export default function CreateListingForm({ initialData = null }) {
             </div>
             <div className="pt-6 border-t">
               <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h3 className="text-sm font-bold text-gray-900">
-                    Extra Services
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Offer add-ons like decorations, cake, or photography.
-                  </p>
-                </div>
+                <h3 className="text-sm font-bold text-gray-900">
+                  Extra Services
+                </h3>
                 <button
                   onClick={addService}
-                  className="text-xs flex items-center gap-1 bg-black text-white px-3 py-1.5 rounded-full hover:bg-gray-800"
+                  className="text-xs flex items-center gap-1 bg-black text-white px-3 py-1.5 rounded-full"
                 >
                   <Plus className="w-3 h-3" /> Add Service
                 </button>
@@ -966,28 +939,24 @@ export default function CreateListingForm({ initialData = null }) {
               <div className="space-y-3">
                 {formData.addOns.map((addon, index) => (
                   <div key={index} className="flex gap-3 items-start">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        placeholder="Service Name"
-                        value={addon.name}
-                        onChange={(e) =>
-                          updateService(index, "name", e.target.value)
-                        }
-                        className="w-full p-2 border rounded-lg text-sm"
-                      />
-                    </div>
-                    <div className="w-32">
-                      <input
-                        type="number"
-                        placeholder="Price (₹)"
-                        value={addon.price}
-                        onChange={(e) =>
-                          updateService(index, "price", e.target.value)
-                        }
-                        className="w-full p-2 border rounded-lg text-sm"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="Service Name"
+                      value={addon.name}
+                      onChange={(e) =>
+                        updateService(index, "name", e.target.value)
+                      }
+                      className="flex-1 p-2 border rounded-lg text-sm"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price"
+                      value={addon.price}
+                      onChange={(e) =>
+                        updateService(index, "price", e.target.value)
+                      }
+                      className="w-32 p-2 border rounded-lg text-sm"
+                    />
                     <button
                       onClick={() => removeService(index)}
                       className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
@@ -996,81 +965,62 @@ export default function CreateListingForm({ initialData = null }) {
                     </button>
                   </div>
                 ))}
-                {formData.addOns.length === 0 && (
-                  <p className="text-sm text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg">
-                    No extra services added yet.
-                  </p>
-                )}
                 {errors.addon_0 && (
-                  <p className="text-red-500 text-xs">
-                    Please complete all service fields.
-                  </p>
+                  <p className="text-red-500 text-xs">Complete services</p>
                 )}
               </div>
             </div>
           </div>
         );
       case 4:
-        // [Step 4 Content]
         return (
           <div className="space-y-6 animate-in fade-in">
+            {/* WEEKDAY/WEEKEND SCHEDULE - KEEPING THIS BRIEF FOR READABILITY */}
             <div className="p-4 border rounded-xl">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Briefcase className="w-4 h-4" /> Weekdays (Mon-Fri)
+                <Briefcase className="w-4 h-4" /> Weekdays
               </h3>
               <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="text-xs text-gray-500">Open</label>
-                  <input
-                    type="time"
-                    name="weekdayOpen"
-                    value={formData.weekdayOpen}
-                    onChange={handleChange}
-                    className="w-full mt-1 p-2 border rounded-lg"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-gray-500">Close</label>
-                  <input
-                    type="time"
-                    name="weekdayClose"
-                    value={formData.weekdayClose}
-                    onChange={handleChange}
-                    className="w-full mt-1 p-2 border rounded-lg"
-                  />
-                </div>
+                <input
+                  type="time"
+                  name="weekdayOpen"
+                  value={formData.weekdayOpen}
+                  onChange={handleChange}
+                  className="flex-1 p-2 border rounded-lg"
+                />
+                <input
+                  type="time"
+                  name="weekdayClose"
+                  value={formData.weekdayClose}
+                  onChange={handleChange}
+                  className="flex-1 p-2 border rounded-lg"
+                />
               </div>
             </div>
             <div className="p-4 border rounded-xl bg-gray-50">
               <h3 className="font-semibold mb-4 flex items-center gap-2 text-purple-700">
-                <PartyPopper className="w-4 h-4" /> Weekends (Sat-Sun)
+                <PartyPopper className="w-4 h-4" /> Weekends
               </h3>
               <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="text-xs text-gray-500">Open</label>
-                  <input
-                    type="time"
-                    name="weekendOpen"
-                    value={formData.weekendOpen}
-                    onChange={handleChange}
-                    className="w-full mt-1 p-2 border rounded-lg"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="text-xs text-gray-500">Close</label>
-                  <input
-                    type="time"
-                    name="weekendClose"
-                    value={formData.weekendClose}
-                    onChange={handleChange}
-                    className="w-full mt-1 p-2 border rounded-lg"
-                  />
-                </div>
+                <input
+                  type="time"
+                  name="weekendOpen"
+                  value={formData.weekendOpen}
+                  onChange={handleChange}
+                  className="flex-1 p-2 border rounded-lg"
+                />
+                <input
+                  type="time"
+                  name="weekendClose"
+                  value={formData.weekendClose}
+                  onChange={handleChange}
+                  className="flex-1 p-2 border rounded-lg"
+                />
               </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Cleaning Buffer (Minutes)
+                Cleaning Buffer
               </label>
               <select
                 name="bufferTime"
@@ -1079,15 +1029,60 @@ export default function CreateListingForm({ initialData = null }) {
                 className="w-full p-3 border rounded-xl bg-white"
               >
                 <option value="0">None</option>
-                <option value="15">15 Minutes</option>
-                <option value="30">30 Minutes</option>
+                <option value="15">15 Mins</option>
+                <option value="30">30 Mins</option>
                 <option value="60">1 Hour</option>
               </select>
+            </div>
+
+            {/* --- ICAL SECTION --- */}
+            <div className="pt-6 border-t mt-6">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">
+                    External Calendars (iCal)
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Sync availability with Airbnb, Booking.com, etc.
+                  </p>
+                </div>
+                <button
+                  onClick={addIcal}
+                  disabled={formData.icalUrls.length >= 10}
+                  className="text-xs flex items-center gap-1 bg-black text-white px-3 py-1.5 rounded-full disabled:opacity-50"
+                >
+                  <Plus className="w-3 h-3" /> Add URL
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {formData.icalUrls.map((url, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="https://airbnb.com/calendar/ical/..."
+                      value={url}
+                      onChange={(e) => updateIcal(index, e.target.value)}
+                      className="flex-1 p-2 border rounded-lg text-sm font-mono text-gray-600"
+                    />
+                    <button
+                      onClick={() => removeIcal(index)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {formData.icalUrls.length === 0 && (
+                  <p className="text-sm text-gray-400 italic text-center py-4 bg-gray-50 rounded-lg border border-dashed">
+                    No external calendars linked.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         );
       case 5:
-        // [Step 5 Content]
         return (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in">
             {AMENITIES.map((item) => {
@@ -1102,18 +1097,25 @@ export default function CreateListingForm({ initialData = null }) {
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  {item.icon}
-                  <span className="text-sm mt-2 font-medium">{item.label}</span>
+                  <div className={isSelected ? "text-black" : "text-gray-500"}>
+                    {item.icon}
+                  </div>
+                  <span
+                    className={`text-sm mt-2 font-medium ${
+                      isSelected ? "text-black" : "text-gray-500"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
                 </div>
               );
             })}
           </div>
         );
       case 6:
-        // [Step 6 Content]
         return (
           <div className="space-y-6 animate-in fade-in">
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 hover:bg-white transition-colors relative">
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 relative">
               <input
                 type="file"
                 multiple
@@ -1138,13 +1140,9 @@ export default function CreateListingForm({ initialData = null }) {
                     onDragStart={() => onDragStart(index)}
                     onDragOver={(e) => onDragOver(e, index)}
                     onDragEnd={onDragEnd}
-                    className={`relative aspect-square rounded-xl overflow-hidden border group bg-white shadow-sm transition-transform ${
-                      draggedItemIndex === index
-                        ? "scale-105 shadow-lg ring-2 ring-black z-10"
-                        : ""
-                    }`}
+                    className="relative aspect-square rounded-xl overflow-hidden border group bg-white shadow-sm"
                   >
-                    <div className="absolute top-2 left-2 z-10 p-1 bg-black/50 rounded-md text-white cursor-grab active:cursor-grabbing">
+                    <div className="absolute top-2 left-2 z-10 p-1 bg-black/50 rounded-md text-white cursor-grab">
                       <GripVertical className="w-4 h-4" />
                     </div>
                     <Image
@@ -1155,7 +1153,7 @@ export default function CreateListingForm({ initialData = null }) {
                     />
                     <button
                       onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                      className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 hover:bg-red-50"
                     >
                       <X className="w-4 h-4 text-red-500" />
                     </button>
@@ -1199,7 +1197,7 @@ export default function CreateListingForm({ initialData = null }) {
         <button
           onClick={prevStep}
           disabled={currentStep === 1}
-          className="px-6 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
         >
           Back
         </button>
@@ -1209,7 +1207,7 @@ export default function CreateListingForm({ initialData = null }) {
             disabled={isSubmitting}
             className="px-8 py-3 bg-black text-white rounded-xl font-bold shadow-lg hover:bg-gray-800 disabled:opacity-70 flex items-center gap-2"
           >
-            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}{" "}
             {isEditMode ? "Save Changes" : "Publish Listing"}
           </button>
         ) : (

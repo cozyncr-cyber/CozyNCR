@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // --- Existing configurations ---
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
@@ -14,7 +15,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "fra.cloud.appwrite.io", // Specific to your error (Frankfurt region)
+        hostname: "fra.cloud.appwrite.io",
         port: "",
       },
       {
@@ -23,6 +24,20 @@ const nextConfig = {
         port: "",
       },
     ],
+  },
+
+  // --- New Headers configuration from the image ---
+  async headers() {
+    return [
+      {
+        source: "/.well-known/assetlinks.json",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
+    ];
   },
 };
 
