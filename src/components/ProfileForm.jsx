@@ -9,6 +9,7 @@ import {
   ExclamationCircleIcon,
 } from "@heroicons/react/24/solid";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function ProfileForm({ user }) {
   const [isPending, startTransition] = useTransition();
@@ -152,6 +153,12 @@ export default function ProfileForm({ user }) {
                   {user.kycStatus || "Pending"}
                 </span>
               </div>
+            </div>
+
+            <div className="flex items-center justify-center p-3 hover:bg-red-500 hover:text-white bg-slate-100 rounded-xl">
+              <Link href={"/delete-account"}>
+                <button className="text-black font-bold">Delete Account</button>
+              </Link>
             </div>
           </div>
         </div>

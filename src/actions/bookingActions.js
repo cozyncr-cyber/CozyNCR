@@ -1,6 +1,6 @@
 "use server";
 
-import { Query } from "node-appwrite";
+import { ID, Query } from "node-appwrite";
 import { createSessionClient } from "@/lib/appwrite";
 import { revalidatePath } from "next/cache";
 
@@ -13,10 +13,7 @@ const LISTINGS_COLLECTION_ID =
 // --- HELPER: AUTO-REJECT OLD REQUESTS ---
 async function expireOldRequests(databases, listingIds) {
   try {
-    // Calculate timestamp for 24 hours ago
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
-    // Find pending bookings older than 24h for these listings
     const expiredBookings = await databases.listDocuments(
       DATABASE_ID,
       BOOKINGS_COLLECTION_ID,
@@ -24,7 +21,7 @@ async function expireOldRequests(databases, listingIds) {
         Query.equal("listingId", listingIds),
         Query.equal("status", "pending"),
         Query.lessThan("$createdAt", oneDayAgo),
-        Query.limit(100), // Batch size
+        Query.limit(100),
       ]
     );
 
@@ -34,15 +31,96 @@ async function expireOldRequests(databases, listingIds) {
           DATABASE_ID,
           BOOKINGS_COLLECTION_ID,
           booking.$id,
-          { status: "rejected" } // Mark as rejected automatically
+          { status: "rejected" }
         )
       );
       await Promise.all(updates);
-      // We don't revalidate path here to avoid infinite loops,
-      // the data returned below will reflect changes on refresh
     }
   } catch (error) {
     console.error("Auto-expire failed (non-critical):", error);
+  }
+}
+
+// --- NEW: FETCH SIMPLE LISTING LIST FOR DROPDOWN ---
+export async function getHostListingsSimple() {
+  try {
+    const { account, databases } = await createSessionClient();
+    const user = await account.get();
+
+    const listings = await databases.listDocuments(
+      DATABASE_ID,
+      LISTINGS_COLLECTION_ID,
+      [
+        Query.equal("ownerId", user.$id),
+        Query.select(["$id", "title"]), // Optimize fetch
+        Query.limit(100),
+      ]
+    );
+    return listings.documents;
+  } catch (error) {
+    return [];
+  }
+}
+
+// --- NEW: CREATE MANUAL BLOCK ---
+export async function createManualBlock(formData) {
+  const listingId = formData.get("listingId");
+  const startTime = formData.get("startTime");
+  const endTime = formData.get("endTime");
+
+  if (!listingId || !startTime || !endTime) {
+    return { error: "All fields are required" };
+  }
+
+  if (new Date(startTime) >= new Date(endTime)) {
+    return { error: "End time must be after start time" };
+  }
+
+  try {
+    const { databases } = await createSessionClient();
+
+    // Check for overlaps with Active Bookings (Confirmed, Pending, or Blocked)
+    // We assume anything NOT cancelled/rejected is blocking the calendar
+    const conflicts = await databases.listDocuments(
+      DATABASE_ID,
+      BOOKINGS_COLLECTION_ID,
+      [
+        Query.equal("listingId", listingId),
+        // "IN" query: Check against status that occupy the slot
+        Query.equal("status", ["confirmed", "pending", "blocked"]),
+        Query.lessThan("startTime", endTime),
+        Query.greaterThan("endTime", startTime),
+        Query.limit(1),
+      ]
+    );
+
+    if (conflicts.total > 0) {
+      return {
+        error: "Selected dates overlap with an existing booking or block.",
+      };
+    }
+
+    // Create the Block
+    await databases.createDocument(
+      DATABASE_ID,
+      BOOKINGS_COLLECTION_ID,
+      ID.unique(),
+      {
+        listingId,
+        customerName: "Host Blocked", // Indicator for UI
+        startTime,
+        endTime,
+        status: "blocked",
+        totalPrice: 0,
+        guestCount: 1,
+      }
+    );
+
+    revalidatePath("/bookings");
+    return { success: true };
+  } catch (error) {
+    console.error("Block Date Error:", error);
+    return { error: error.message || "Failed to block dates" };
   }
 }
 
@@ -51,7 +129,6 @@ export async function getHostBookings(page = 1, limit = 10) {
     const { account, databases } = await createSessionClient();
     const user = await account.get();
 
-    // 1. Get all listings owned by this user
     const hostListings = await databases.listDocuments(
       DATABASE_ID,
       LISTINGS_COLLECTION_ID,
@@ -62,12 +139,10 @@ export async function getHostBookings(page = 1, limit = 10) {
 
     const listingIds = hostListings.documents.map((listing) => listing.$id);
 
-    // This ensures data is clean before we fetch the page
     await expireOldRequests(databases, listingIds);
 
     const offset = (page - 1) * limit;
 
-    // 2. Get paginated bookings
     const bookings = await databases.listDocuments(
       DATABASE_ID,
       BOOKINGS_COLLECTION_ID,
