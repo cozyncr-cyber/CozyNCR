@@ -80,11 +80,11 @@ export default function Navbar({ user }) {
 
       {/* MOBILE DRAWER */}
       <div
-        className={fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out md:hidden ${
+        className={`fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out md:hidden ${
           isMobileMenuOpen
             ? "opacity-100 translate-y-0"
             : "opacity-0 -translate-y-full pointer-events-none"
-        }}
+        }`}
       >
         <div className="p-4 space-y-2">
           {user ? (
