@@ -42,6 +42,66 @@ export default function Navbar({ user }) {
           {/* RIGHT: Actions */}
           <div className="flex items-center gap-4">
             {user ? (
+            <>
+              <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Account
+              </div>
+              <Link
+                href="/dashboard"
+                onClick={closeMenu} // Close menu on click
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/properties"
+                onClick={closeMenu} // Close menu on click
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+              >
+                My Listings
+              </Link>
+              <Link
+                href="/profile"
+                onClick={closeMenu} // Close menu on click
+                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+              >
+                Profile
+              </Link>
+              <div className="border-t border-gray-100 my-2 pt-2">
+                <button
+                  onClick={() => {
+                    logout();
+                    closeMenu();
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
+                >
+                  <LogOut size={16} /> Sign out
+                </button>
+              </div>
+            </>
+          ) : (
+              /* Guest State */
+              <Link
+                href="/signin"
+                className="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
+              >
+                Go to Dashboard <ArrowRight size={16} />
+              </Link>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* MOBILE DRAWER */}
+      <div
+        className={`fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out md:hidden ${
+          isMobileMenuOpen
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-full pointer-events-none"
+        }`}
+      >
+        <div className="p-4 space-y-2">
+          {user ? (
   <>
     <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
       Account
@@ -116,66 +176,6 @@ export default function Navbar({ user }) {
     </div>
   </>
 ) : (
-              /* Guest State */
-              <Link
-                href="/signin"
-                className="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl"
-              >
-                Go to Dashboard <ArrowRight size={16} />
-              </Link>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      {/* MOBILE DRAWER */}
-      <div
-        className={`fixed inset-x-0 top-16 z-40 bg-white border-b border-gray-200 shadow-lg transition-all duration-300 ease-in-out md:hidden ${
-          isMobileMenuOpen
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-full pointer-events-none"
-        }`}
-      >
-        <div className="p-4 space-y-2">
-          {user ? (
-            <>
-              <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                Account
-              </div>
-              <Link
-                href="/dashboard"
-                onClick={closeMenu} // Close menu on click
-                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/properties"
-                onClick={closeMenu} // Close menu on click
-                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
-              >
-                My Listings
-              </Link>
-              <Link
-                href="/profile"
-                onClick={closeMenu} // Close menu on click
-                className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
-              >
-                Profile
-              </Link>
-              <div className="border-t border-gray-100 my-2 pt-2">
-                <button
-                  onClick={() => {
-                    logout();
-                    closeMenu();
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
-                >
-                  <LogOut size={16} /> Sign out
-                </button>
-              </div>
-            </>
-          ) : (
             <div className="p-2">
               <Link
                 href="/signin"
