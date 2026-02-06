@@ -42,30 +42,80 @@ export default function Navbar({ user }) {
           {/* RIGHT: Actions */}
           <div className="flex items-center gap-4">
             {user ? (
-              <>
-                {/* Authenticated State */}
-                <Link
-                  href="/dashboard"
-                  className="hidden md:flex items-center justify-center p-2 transition-all"
-                  title="Go to Dashboard"
-                >
-                  <div className="rounded-full flex items-center justify-center">
-                    <button className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-50 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors border border-gray-200">
-                      <User size={16} />
-                      <span>Dashboard</span>
-                    </button>
-                  </div>
-                </Link>
+  <>
+    <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+      Account
+    </div>
 
-                <button
-                  onClick={() => logout()}
-                  className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-200"
-                >
-                  <LogOut size={16} />
-                  <span>Sign out</span>
-                </button>
-              </>
-            ) : (
+    <Link
+      href="/dashboard"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      Dashboard
+    </Link>
+
+    <Link
+      href="/properties"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      My Listings
+    </Link>
+
+    <Link
+      href="/bookings"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      Bookings
+    </Link>
+
+    <Link
+      href="/calendar"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      Calendar
+    </Link>
+
+    <Link
+      href="/profile"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      Profile
+    </Link>
+
+    <Link
+      href="/payment-preferences"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      Payment Preferences
+    </Link>
+
+    <Link
+      href="/kyc"
+      onClick={closeMenu}
+      className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+    >
+      Verification
+    </Link>
+
+    <div className="border-t border-gray-100 my-2 pt-2">
+      <button
+        onClick={() => {
+          logout();
+          closeMenu();
+        }}
+        className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
+      >
+        <LogOut size={16} /> Sign out
+      </button>
+    </div>
+  </>
+) : (
               /* Guest State */
               <Link
                 href="/signin"
