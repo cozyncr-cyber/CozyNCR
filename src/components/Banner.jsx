@@ -150,7 +150,7 @@ const Banner = () => {
 
                 {/* Play Store Button (Small) */}
                 <a
-                  href="#"
+                  href="https://play.google.com/store/apps/details?id=com.cozyncr.cozyncr"
                   className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-xl hover:bg-gray-800 transition-all hover:-translate-y-0.5"
                 >
                   <svg
