@@ -62,7 +62,7 @@ export default async function AdminLayout({ children }) {
       {/* --- 2. Layout Container --- */}
       <div className="pt-16 flex min-h-screen overflow-hidden">
         {/* Mobile Menu */}
-        <AdminMobileMenu navItems={navItems} logout={logout} />
+        <AdminMobileMenu navItems={navItems}/>
         {/* --- Sidebar (Fixed Left, Matches DashboardLayout style) --- */}
         <aside className="hidden md:block w-64 flex-shrink-0 h-screen overflow-y-auto bg-white border-r border-gray-200 fixed left-0 top-16 pb-20">
           <div className="p-4 space-y-1">
