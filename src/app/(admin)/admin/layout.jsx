@@ -1,5 +1,4 @@
 import Link from "next/link";
-import AdminMobileMenu from "./AdminMobileMenu";
 import { getUserProfile, logout } from "@/actions/auth";
 import { redirect } from "next/navigation";
 import {
@@ -61,8 +60,6 @@ export default async function AdminLayout({ children }) {
 
       {/* --- 2. Layout Container --- */}
       <div className="pt-16 flex min-h-screen overflow-hidden">
-        {/* Mobile Menu */}
-        <AdminMobileMenu navItems={navItems}/>
         {/* --- Sidebar (Fixed Left, Matches DashboardLayout style) --- */}
         <aside className="hidden md:block w-64 flex-shrink-0 h-screen overflow-y-auto bg-white border-r border-gray-200 fixed left-0 top-16 pb-20">
           <div className="p-4 space-y-1">
@@ -90,7 +87,38 @@ export default async function AdminLayout({ children }) {
             </div>
           </div>
         </aside>
+{/* ✅ Mobile Top Navigation */}
+<div className="md:hidden fixed top-16 left-0 w-full bg-white border-b border-gray-200 z-40">
+  <div className="flex justify-around py-2">
+    <Link
+      href="/admin"
+      className="text-sm font-medium text-gray-600 hover:text-gray-900"
+    >
+      Overview
+    </Link>
 
+    <Link
+      href="/admin/payouts"
+      className="text-sm font-medium text-gray-600 hover:text-gray-900"
+    >
+      Payouts
+    </Link>
+
+    <Link
+      href="/admin/kyc"
+      className="text-sm font-medium text-gray-600 hover:text-gray-900"
+    >
+      KYC
+    </Link>
+
+    <Link
+      href="/admin/refunds"
+      className="text-sm font-medium text-gray-600 hover:text-gray-900"
+    >
+      Refunds
+    </Link>
+  </div>
+</div>
         {/* --- Main Content (Scrollable, pushed right by sidebar width) --- */}
         <main className="flex-1 h-full overflow-y-auto p-4 sm:p-8 md:ml-64">
           <div className="max-w-5xl mx-auto pb-20">{children}</div>
