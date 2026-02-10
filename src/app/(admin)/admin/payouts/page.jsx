@@ -73,6 +73,9 @@ export default async function PayoutsPage({ searchParams }) {
                       <div className="text-xs text-gray-500">
                         {payout.hostPhone}
                       </div>
+                      <div className="text-xs text-gray-500">
+                        {payout?.upiId}
+                      </div>
                     </td>
                     <td className="px-6 py-4 max-w-xs truncate text-gray-700">
                       {payout.listingTitle}

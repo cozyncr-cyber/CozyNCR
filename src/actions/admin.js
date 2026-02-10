@@ -158,11 +158,11 @@ export async function getAdminStats() {
     return { totalUsers: 0, totalListings: 0, totalBookings: 0, pendingKyc: 0 };
   }
 }
-
 export async function getPendingPayouts(page = 1, limit = 10) {
   await requireAdmin();
   const { databases } = await createAdminClient();
   const offset = (page - 1) * limit;
+
   try {
     const bookings = await databases.listDocuments(
       DATABASE_ID,
@@ -175,19 +175,35 @@ export async function getPendingPayouts(page = 1, limit = 10) {
         Query.offset(offset),
       ]
     );
+
     const enriched = await Promise.all(
       bookings.documents.map(async (booking) => {
         try {
+          // 1. Fetch Listing
           const listing = await databases.getDocument(
             DATABASE_ID,
             LISTINGS_COLLECTION_ID,
             booking.listingId
           );
+
+          // 2. Fetch Host Profile
           const host = await databases.getDocument(
             DATABASE_ID,
             USER_COLLECTION_ID,
             listing.ownerId
           );
+
+          // 3. Fetch Payment Preferences for this specific host
+          const paymentPrefs = await databases.listDocuments(
+            DATABASE_ID,
+            'payment_preferences', // Ensure this ID is defined
+            [Query.equal("user_id", host.$id), Query.limit(1)]
+          );
+
+          const upiId = paymentPrefs.documents.length > 0 
+            ? paymentPrefs.documents[0].upi_id 
+            : null;
+
           return {
             ...booking,
             listingTitle: listing.title,
@@ -195,22 +211,27 @@ export async function getPendingPayouts(page = 1, limit = 10) {
             hostEmail: host.email,
             hostPhone: host.phone,
             hostId: host.$id,
+            upiId: upiId, // Added data
           };
         } catch (e) {
+          console.error("Error enriching booking:", e);
           return {
             ...booking,
             listingTitle: "Unknown Listing",
             hostName: "Unknown Host",
+            upiId: null,
           };
         }
       })
     );
+
     return {
       documents: enriched,
       total: bookings.total,
       totalPages: Math.ceil(bookings.total / limit),
     };
   } catch (error) {
+    console.error("Fetch Error:", error);
     return { documents: [], total: 0, totalPages: 0 };
   }
 }
