@@ -8,7 +8,7 @@ import {
   ArrowLeftOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
-export default function AdminMobileMenu({ navItems, logout }) {
+export default function AdminMobileMenu({ navItems }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -38,13 +38,6 @@ export default function AdminMobileMenu({ navItems, logout }) {
               {item.name}
             </Link>
           ))}
-
-          <form action={logout}>
-            <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-red-600 hover:bg-red-50 transition-all font-medium text-sm">
-              <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-              Logout
-            </button>
-          </form>
         </div>
       )}
     </div>
